@@ -65,9 +65,7 @@ const AdminLeads = () => {
 
     setShowForm(false);
     setEditingLead(null);
-    setForm({ name: "", company: "", phone: "", email: "", origin: "", segment: "",
-      priority: "media", temperature: "morno", best_contact_time: "", estimated_value: "",
-      notes: "", lovable_account: "" });
+    resetForm();
     fetchLeads();
   };
 
