@@ -31,11 +31,14 @@ const AdminLeads = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
 
-  const [form, setForm] = useState({
+  const defaultForm = {
     name: "", company: "", phone: "", email: "", origin: "", segment: "",
-    priority: "media" as const, temperature: "morno" as const,
+    priority: "media" as Database["public"]["Enums"]["lead_priority"],
+    temperature: "morno" as Database["public"]["Enums"]["lead_temperature"],
     best_contact_time: "", estimated_value: "", notes: "", lovable_account: "",
-  });
+  };
+  const [form, setForm] = useState(defaultForm);
+  const resetForm = () => setForm({ ...defaultForm });
 
   useEffect(() => {
     fetchLeads();
