@@ -120,7 +120,7 @@ const Contact = () => {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">WhatsApp</p>
-                    <p className="text-sm text-foreground">(00) 00000-0000</p>
+                    <a href="https://wa.me/5516997754245" target="_blank" rel="noopener noreferrer" className="text-sm text-foreground hover:text-primary transition-colors">(16) 99775-4245</a>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
