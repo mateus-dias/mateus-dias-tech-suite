@@ -120,7 +120,7 @@ const Contact = () => {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">WhatsApp</p>
-                    <p className="text-sm text-foreground">(00) 00000-0000</p>
+                    <a href="https://wa.me/5516997754245" target="_blank" rel="noopener noreferrer" className="text-sm text-foreground hover:text-primary transition-colors">(16) 99775-4245</a>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -137,8 +137,7 @@ const Contact = () => {
 
             <div className="glass-card rounded-2xl p-8">
               <h3 className="text-lg font-semibold text-foreground mb-3">Horário de atendimento</h3>
-              <p className="text-sm text-muted-foreground">Segunda a Sexta: 8h às 18h</p>
-              <p className="text-sm text-muted-foreground">Sábado: 8h às 12h</p>
+              <p className="text-sm text-muted-foreground">Atendimento das 08h às 22h</p>
               <p className="text-sm text-muted-foreground mt-3">Resposta em até 24 horas.</p>
             </div>
           </motion.div>

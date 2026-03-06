@@ -12,9 +12,12 @@ const Footer = () => {
               <p className="text-xs text-muted-foreground">Engenheiro da Computação</p>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} Mateus Dias Tech. Todos os direitos reservados.
-          </p>
+          <div className="text-center md:text-right">
+            <p className="text-xs text-muted-foreground">Atendimento das 08h às 22h</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              © {new Date().getFullYear()} Mateus Dias Tech. Todos os direitos reservados.
+            </p>
+          </div>
         </div>
       </div>
     </footer>

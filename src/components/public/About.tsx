@@ -85,7 +85,7 @@ const About = () => {
             </div>
 
             <a
-              href="https://wa.me/5500000000000"
+              href="https://wa.me/5516997754245"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 mt-8 rounded-xl font-semibold text-primary-foreground bg-primary glow-blue hover:opacity-90 transition-all"
