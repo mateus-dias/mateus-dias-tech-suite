@@ -65,7 +65,7 @@ const Hero = () => {
               <ArrowRight size={18} />
             </a>
             <a
-              href="https://wa.me/5500000000000"
+              href="https://wa.me/5516997754245"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-semibold text-foreground glass hover:bg-secondary/50 transition-all"
