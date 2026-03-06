@@ -251,7 +251,7 @@ const PublicPage = () => {
             </div>
 
             {/* Actions */}
-            {proposal.status !== "aprovada" && (
+            {(proposal.status as string) !== "aprovada" && (
               <div className="glass-card rounded-2xl p-6">
                 <h3 className="text-sm font-semibold text-foreground mb-4">O que deseja fazer?</h3>
                 <div className="flex flex-col sm:flex-row gap-3">
