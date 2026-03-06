@@ -1,42 +1,40 @@
 import { motion } from "framer-motion";
-import { ExternalLink } from "lucide-react";
+import portfolioProvas from "@/assets/portfolio-provas.jpg";
+import portfolioOS from "@/assets/portfolio-os.jpg";
+import portfolioSite from "@/assets/portfolio-site.jpg";
+import portfolioDashboard from "@/assets/portfolio-dashboard.jpg";
+import portfolioEducacional from "@/assets/portfolio-educacional.jpg";
 
 const projects = [
   {
-    title: "Sistema de Gestão Empresarial",
-    category: "Sistema Web",
-    description: "Plataforma completa para gerenciamento de processos internos com dashboard analytics.",
-    tags: ["React", "Node.js", "PostgreSQL"],
+    title: "Sistema Gerador de Provas",
+    description: "Plataforma web que permite a professores criar, organizar e gerar avaliações automaticamente em poucos minutos.",
+    tags: ["React", "Node.js", "Supabase"],
+    image: portfolioProvas,
   },
   {
-    title: "E-commerce Premium",
-    category: "Plataforma Digital",
-    description: "Loja virtual com painel administrativo, controle de estoque e integração de pagamentos.",
-    tags: ["Next.js", "Stripe", "Supabase"],
+    title: "Sistema de Ordem de Serviço",
+    description: "Sistema digital para controle de manutenção, acompanhamento de serviços e organização de atendimentos.",
+    tags: ["React", "PostgreSQL", "API REST"],
+    image: portfolioOS,
   },
   {
-    title: "Portal Corporativo",
-    category: "Site Institucional",
-    description: "Site institucional moderno com sistema de gerenciamento de conteúdo personalizado.",
-    tags: ["React", "CMS", "SEO"],
+    title: "Site Institucional Profissional",
+    description: "Site moderno e responsivo desenvolvido para empresas apresentarem seus serviços com credibilidade e alto desempenho.",
+    tags: ["Next.js", "SEO", "CMS"],
+    image: portfolioSite,
   },
   {
-    title: "Dashboard de Analytics",
-    category: "Painel Admin",
-    description: "Dashboard interativo com gráficos em tempo real e relatórios personalizados.",
+    title: "Painel Administrativo",
+    description: "Dashboards interativos para análise e gestão empresarial com gráficos em tempo real e relatórios personalizados.",
     tags: ["React", "D3.js", "API REST"],
-  },
-  {
-    title: "App de Agendamento",
-    category: "Sistema Web",
-    description: "Sistema de agendamento online com notificações automáticas e integração com calendário.",
-    tags: ["TypeScript", "PostgreSQL", "WebSocket"],
+    image: portfolioDashboard,
   },
   {
     title: "Plataforma Educacional",
-    category: "Plataforma Digital",
-    description: "Sistema de ensino a distância com videoaulas, exercícios e certificados automáticos.",
-    tags: ["React", "Video API", "Auth"],
+    description: "Sistema web com login, conteúdo organizado por módulos e acompanhamento de progresso dos alunos.",
+    tags: ["React", "Supabase", "Auth"],
+    image: portfolioEducacional,
   },
 ];
 
@@ -70,20 +68,18 @@ const Portfolio = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="glass-card rounded-2xl overflow-hidden group cursor-pointer hover:border-accent/30 transition-all"
+              className="glass-card rounded-2xl overflow-hidden group hover:border-accent/30 transition-all"
             >
-              <div className="h-48 bg-gradient-to-br from-secondary to-muted flex items-center justify-center relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-neon-purple/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                <span className="text-4xl font-bold text-muted-foreground/20 group-hover:text-primary/30 transition-colors">
-                  {project.category.charAt(0)}
-                </span>
-                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <ExternalLink size={18} className="text-primary" />
-                </div>
+              <div className="h-48 overflow-hidden relative">
+                <img
+                  src={project.image}
+                  alt={project.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
               </div>
               <div className="p-6">
-                <span className="text-xs font-medium text-primary">{project.category}</span>
-                <h3 className="text-lg font-semibold text-foreground mt-1 mb-2">{project.title}</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-2">{project.title}</h3>
                 <p className="text-sm text-muted-foreground mb-4">{project.description}</p>
                 <div className="flex flex-wrap gap-2">
                   {project.tags.map((tag) => (
