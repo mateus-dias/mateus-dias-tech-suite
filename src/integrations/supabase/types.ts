@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      contract_signatures: {
+        Row: {
+          contract_id: string
+          created_at: string
+          id: string
+          ip_address: string | null
+          signature_image: string
+          signer_name: string | null
+          signer_type: string | null
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          signature_image: string
+          signer_name?: string | null
+          signer_type?: string | null
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          signature_image?: string
+          signer_name?: string | null
+          signer_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_signatures_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contracts: {
         Row: {
           admin_signature_data: string | null
@@ -466,6 +504,38 @@ export type Database = {
           },
         ]
       }
+      proposal_adjustments: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          message: string
+          proposal_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          message: string
+          proposal_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          message?: string
+          proposal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_adjustments_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       proposal_items: {
         Row: {
           created_at: string
@@ -504,19 +574,69 @@ export type Database = {
           },
         ]
       }
+      proposal_payments: {
+        Row: {
+          amount: number | null
+          created_at: string
+          description: string | null
+          id: string
+          payment_link: string | null
+          pix_key: string | null
+          proposal_id: string
+          qr_code_url: string | null
+          type: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          payment_link?: string | null
+          pix_key?: string | null
+          proposal_id: string
+          qr_code_url?: string | null
+          type?: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          payment_link?: string | null
+          pix_key?: string | null
+          proposal_id?: string
+          qr_code_url?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_payments_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       proposals: {
         Row: {
           client_comments: string | null
           created_at: string
           deadline: string | null
           description: string | null
+          functional_scope: string | null
+          guarantee: string | null
+          hosting: string | null
           id: string
           lead_id: string
+          objectives: string | null
           payment_terms: string | null
+          project_overview: string | null
           public_token: string | null
           scope_excluded: string[] | null
           scope_included: string[] | null
           status: Database["public"]["Enums"]["proposal_status"] | null
+          technologies: string | null
           title: string
           updated_at: string
           user_id: string
@@ -528,13 +648,19 @@ export type Database = {
           created_at?: string
           deadline?: string | null
           description?: string | null
+          functional_scope?: string | null
+          guarantee?: string | null
+          hosting?: string | null
           id?: string
           lead_id: string
+          objectives?: string | null
           payment_terms?: string | null
+          project_overview?: string | null
           public_token?: string | null
           scope_excluded?: string[] | null
           scope_included?: string[] | null
           status?: Database["public"]["Enums"]["proposal_status"] | null
+          technologies?: string | null
           title: string
           updated_at?: string
           user_id: string
@@ -546,13 +672,19 @@ export type Database = {
           created_at?: string
           deadline?: string | null
           description?: string | null
+          functional_scope?: string | null
+          guarantee?: string | null
+          hosting?: string | null
           id?: string
           lead_id?: string
+          objectives?: string | null
           payment_terms?: string | null
+          project_overview?: string | null
           public_token?: string | null
           scope_excluded?: string[] | null
           scope_included?: string[] | null
           status?: Database["public"]["Enums"]["proposal_status"] | null
+          technologies?: string | null
           title?: string
           updated_at?: string
           user_id?: string
