@@ -8,8 +8,10 @@ import Testimonials from "@/components/public/Testimonials";
 import Contact from "@/components/public/Contact";
 import Footer from "@/components/public/Footer";
 import WhatsAppButton from "@/components/public/WhatsAppButton";
+import { useTrackVisit } from "@/hooks/useTrackVisit";
 
 const Index = () => {
+  useTrackVisit("/");
   return (
     <div className="min-h-screen bg-background">
       <Navbar />

@@ -2,23 +2,30 @@ import { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/Logo.png";
-import { CheckCircle, FileText, CreditCard, Pen, Copy, ExternalLink } from "lucide-react";
+import { CheckCircle, FileText, CreditCard, Pen, Copy, ExternalLink, Download, X } from "lucide-react";
 import { toast } from "sonner";
-import type { Database } from "@/integrations/supabase/types";
-
-type Proposal = Database["public"]["Tables"]["proposals"]["Row"];
-type Contract = Database["public"]["Tables"]["contracts"]["Row"];
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 const PublicPage = () => {
   const { token } = useParams<{ token: string }>();
-  const [proposal, setProposal] = useState<Proposal | null>(null);
-  const [contract, setContract] = useState<Contract | null>(null);
+  const [proposal, setProposal] = useState<any>(null);
+  const [contract, setContract] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"proposal" | "contract" | "payment">("proposal");
   const [showSignature, setShowSignature] = useState(false);
+  const [signatureMode, setSignatureMode] = useState<"auto" | "draw">("auto");
+  const [signerName, setSignerName] = useState("");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [comment, setComment] = useState("");
+  const [showAdjustForm, setShowAdjustForm] = useState(false);
+  const [adjustMessage, setAdjustMessage] = useState("");
+  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
+  const [showPaymentSelect, setShowPaymentSelect] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<any>(null);
+  const [signatures, setSignatures] = useState<any[]>([]);
+  const proposalRef = useRef<HTMLDivElement>(null);
+  const contractRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -27,27 +34,27 @@ const PublicPage = () => {
 
   const fetchData = async () => {
     setLoading(true);
-    // Try proposal
     const { data: proposals } = await supabase
-      .from("proposals")
-      .select("*")
-      .eq("public_token", token)
-      .limit(1);
+      .from("proposals").select("*").eq("public_token", token).limit(1);
 
     if (proposals && proposals.length > 0) {
       setProposal(proposals[0]);
+      // Fetch payment methods
+      const { data: pm } = await supabase.from("proposal_payments")
+        .select("*").eq("proposal_id", proposals[0].id);
+      setPaymentMethods(pm || []);
     }
 
-    // Try contract
     const { data: contracts } = await supabase
-      .from("contracts")
-      .select("*")
-      .eq("public_token", token)
-      .limit(1);
+      .from("contracts").select("*").eq("public_token", token).limit(1);
 
     if (contracts && contracts.length > 0) {
       setContract(contracts[0]);
       setActiveTab("contract");
+      // Fetch signatures
+      const { data: sigs } = await supabase.from("contract_signatures")
+        .select("*").eq("contract_id", contracts[0].id);
+      setSignatures(sigs || []);
     }
 
     setLoading(false);
@@ -71,7 +78,7 @@ const PublicPage = () => {
       const rect = canvasRef.current!.getBoundingClientRect();
       ctx.lineWidth = 2;
       ctx.lineCap = "round";
-      ctx.strokeStyle = "hsl(210 40% 95%)";
+      ctx.strokeStyle = "#1a1a2e";
       ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
       ctx.stroke();
     }
@@ -86,10 +93,44 @@ const PublicPage = () => {
     }
   };
 
-  const handleSign = async () => {
-    if (!contract || !canvasRef.current) return;
-    const signatureData = canvasRef.current.toDataURL();
+  const generateAutoSignature = (): string => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 400;
+    canvas.height = 150;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, 400, 150);
+    ctx.font = "italic 42px 'Georgia', serif";
+    ctx.fillStyle = "#1a1a2e";
+    ctx.textAlign = "center";
+    ctx.fillText(signerName || "Assinatura", 200, 90);
+    return canvas.toDataURL();
+  };
 
+  const handleSign = async () => {
+    if (!contract) return;
+    let signatureData: string;
+
+    if (signatureMode === "auto") {
+      if (!signerName.trim()) {
+        toast.error("Digite seu nome para gerar a assinatura");
+        return;
+      }
+      signatureData = generateAutoSignature();
+    } else {
+      if (!canvasRef.current) return;
+      signatureData = canvasRef.current.toDataURL();
+    }
+
+    // Save to contract_signatures
+    await supabase.from("contract_signatures").insert({
+      contract_id: contract.id,
+      signer_name: signerName,
+      signer_type: "client",
+      signature_image: signatureData,
+    } as any);
+
+    // Update contract
     await supabase.from("contracts").update({
       client_signature_data: signatureData,
       client_signature_date: new Date().toISOString(),
@@ -104,358 +145,587 @@ const PublicPage = () => {
 
   const handleApprove = async () => {
     if (!proposal) return;
+    if (paymentMethods.length > 0) {
+      setShowPaymentSelect(true);
+    } else {
+      await supabase.from("proposals").update({ status: "aprovada" }).eq("id", proposal.id);
+      fetchData();
+      toast.success("Proposta aprovada!");
+    }
+  };
+
+  const handleApproveWithPayment = async () => {
+    if (!proposal) return;
     await supabase.from("proposals").update({ status: "aprovada" }).eq("id", proposal.id);
+    setShowPaymentSelect(false);
     fetchData();
     toast.success("Proposta aprovada!");
   };
 
   const handleRequestChanges = async () => {
-    if (!proposal) return;
-    await supabase.from("proposals").update({
-      status: "ajustes",
-      client_comments: comment || "Ajustes solicitados pelo cliente",
-    }).eq("id", proposal.id);
+    if (!proposal || !adjustMessage.trim()) return;
+    await supabase.from("proposal_adjustments").insert({
+      proposal_id: proposal.id,
+      message: adjustMessage,
+      created_by: "client",
+    } as any);
+    await supabase.from("proposals").update({ status: "ajustes" }).eq("id", proposal.id);
+    setShowAdjustForm(false);
+    setAdjustMessage("");
     fetchData();
     toast.success("Ajustes solicitados!");
   };
 
+  const downloadPDF = async (ref: React.RefObject<HTMLDivElement>, filename: string) => {
+    if (!ref.current) return;
+    const canvas = await html2canvas(ref.current, { scale: 2, backgroundColor: "#ffffff" });
+    const imgData = canvas.toDataURL("image/png");
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+    pdf.save(filename);
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!proposal && !contract) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-foreground mb-2">Link não encontrado</h1>
-          <p className="text-muted-foreground">Este link pode ter expirado ou não existe.</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Link não encontrado</h1>
+          <p className="text-gray-500">Este link pode ter expirado ou não existe.</p>
         </div>
       </div>
     );
   }
 
+  // Professional document layout (white/light mode)
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="border-b border-border py-6">
-        <div className="container mx-auto px-6 flex items-center gap-4">
-          <img src={logo} alt="Logo" className="w-12 h-12" />
-          <div>
-            <h1 className="text-lg font-bold text-foreground">Mateus Dias</h1>
-            <p className="text-xs text-muted-foreground">Engenheiro da Computação • Especialista em Desenvolvimento de Sites e Sistemas Web</p>
+      <header className="bg-white border-b border-gray-200 py-6 print:py-4">
+        <div className="container mx-auto px-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <img src={logo} alt="Logo" className="w-12 h-12" />
+            <div>
+              <h1 className="text-lg font-bold text-gray-900">Mateus Dias</h1>
+              <p className="text-xs text-gray-500">Engenheiro da Computação • Desenvolvimento de Sites e Sistemas Web</p>
+            </div>
+          </div>
+          <div className="flex gap-2 print:hidden">
+            {proposal && (
+              <button onClick={() => downloadPDF(proposalRef, `proposta-${proposal.title}.pdf`)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700">
+                <Download size={14} /> Baixar PDF
+              </button>
+            )}
+            {contract && (
+              <button onClick={() => downloadPDF(contractRef, `contrato-${contract.title}.pdf`)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700">
+                <Download size={14} /> Baixar Contrato PDF
+              </button>
+            )}
           </div>
         </div>
       </header>
 
       <div className="container mx-auto px-6 py-8 max-w-4xl">
         {/* Tabs */}
-        <div className="flex gap-2 mb-8">
+        <div className="flex gap-2 mb-8 print:hidden">
           {proposal && (
             <button onClick={() => setActiveTab("proposal")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm transition-all ${activeTab === "proposal" ? "bg-primary text-primary-foreground" : "glass text-muted-foreground hover:text-foreground"}`}>
-              <FileText size={16} /> Proposta
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === "proposal" ? "bg-blue-600 text-white" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"}`}>
+              <FileText size={16} /> Proposta Comercial
             </button>
           )}
           {contract && (
             <>
               <button onClick={() => setActiveTab("contract")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm transition-all ${activeTab === "contract" ? "bg-primary text-primary-foreground" : "glass text-muted-foreground hover:text-foreground"}`}>
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === "contract" ? "bg-blue-600 text-white" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"}`}>
                 <Pen size={16} /> Contrato
               </button>
               <button onClick={() => setActiveTab("payment")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm transition-all ${activeTab === "payment" ? "bg-primary text-primary-foreground" : "glass text-muted-foreground hover:text-foreground"}`}>
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === "payment" ? "bg-blue-600 text-white" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"}`}>
                 <CreditCard size={16} /> Pagamento
               </button>
             </>
           )}
         </div>
 
-        {/* Proposal Tab */}
+        {/* Proposal Tab - Document Style */}
         {activeTab === "proposal" && proposal && (
-          <div className="space-y-6">
-            <div className="glass-card rounded-2xl p-8">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-foreground">{proposal.title}</h2>
-                <span className={`text-xs px-3 py-1 rounded-full ${
-                  proposal.status === "aprovada" ? "bg-neon-green/20 text-neon-green" :
-                  proposal.status === "ajustes" ? "bg-accent/20 text-accent" :
-                  "bg-primary/20 text-primary"
-                }`}>
-                  {proposal.status === "aprovada" ? "Aprovada" : proposal.status === "ajustes" ? "Ajustes" : "Enviada"}
-                </span>
+          <div>
+            <div ref={proposalRef} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              {/* Document Header */}
+              <div className="bg-gradient-to-r from-blue-600 to-blue-800 px-8 py-6 text-white">
+                <div className="flex items-center gap-4 mb-4">
+                  <img src={logo} alt="Logo" className="w-10 h-10 rounded" />
+                  <div>
+                    <p className="text-sm font-medium opacity-90">Mateus Dias Tech</p>
+                    <p className="text-xs opacity-75">Proposta Comercial</p>
+                  </div>
+                </div>
+                <h2 className="text-2xl font-bold">{proposal.title}</h2>
+                <div className="flex gap-6 mt-3 text-sm opacity-90">
+                  {proposal.deadline && <span>Prazo: {proposal.deadline}</span>}
+                  {proposal.validity_days && <span>Validade: {proposal.validity_days} dias</span>}
+                </div>
               </div>
 
-              {proposal.description && (
-                <p className="text-sm text-muted-foreground mb-6">{proposal.description}</p>
-              )}
+              <div className="px-8 py-6 space-y-8">
+                {/* Project Overview */}
+                {(proposal.project_overview || proposal.description) && (
+                  <section>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">1. Visão Geral do Projeto</h3>
+                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{proposal.project_overview || proposal.description}</p>
+                  </section>
+                )}
 
-              <div className="grid md:grid-cols-2 gap-6">
-                {proposal.scope_included && proposal.scope_included.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground mb-3">✅ Escopo Incluído</h3>
-                    <ul className="space-y-2">
-                      {proposal.scope_included.map((item, i) => (
-                        <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                          <CheckCircle size={14} className="text-neon-green shrink-0 mt-0.5" />
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                {/* Objectives */}
+                {proposal.objectives && (
+                  <section>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">2. Objetivos do Sistema</h3>
+                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{proposal.objectives}</p>
+                  </section>
                 )}
-                {proposal.scope_excluded && proposal.scope_excluded.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground mb-3">❌ Fora do Escopo</h3>
-                    <ul className="space-y-2">
-                      {proposal.scope_excluded.map((item, i) => (
-                        <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                          <span className="text-destructive shrink-0">✕</span>
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-                {proposal.value && (
-                  <div className="glass rounded-xl p-4">
-                    <p className="text-xs text-muted-foreground">Valor</p>
-                    <p className="text-lg font-bold text-foreground">R$ {Number(proposal.value).toLocaleString('pt-BR')}</p>
-                  </div>
+                {/* Functional Scope */}
+                {proposal.functional_scope && (
+                  <section>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">3. Escopo Funcional</h3>
+                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{proposal.functional_scope}</p>
+                  </section>
                 )}
-                {proposal.deadline && (
-                  <div className="glass rounded-xl p-4">
-                    <p className="text-xs text-muted-foreground">Prazo</p>
-                    <p className="text-lg font-bold text-foreground">{proposal.deadline}</p>
-                  </div>
+
+                {/* Scope Lists */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  {proposal.scope_included?.length > 0 && proposal.scope_included[0] && (
+                    <section>
+                      <h3 className="text-base font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">✅ Escopo Incluído</h3>
+                      <ul className="space-y-2">
+                        {proposal.scope_included.filter((s: string) => s).map((item: string, i: number) => (
+                          <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
+                            <CheckCircle size={14} className="text-green-500 shrink-0 mt-0.5" />
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  )}
+                  {proposal.scope_excluded?.length > 0 && proposal.scope_excluded[0] && (
+                    <section>
+                      <h3 className="text-base font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">❌ Fora do Escopo</h3>
+                      <ul className="space-y-2">
+                        {proposal.scope_excluded.filter((s: string) => s).map((item: string, i: number) => (
+                          <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
+                            <span className="text-red-500 shrink-0">✕</span>
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  )}
+                </div>
+
+                {/* Technologies */}
+                {proposal.technologies && (
+                  <section>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">4. Tecnologias Utilizadas</h3>
+                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{proposal.technologies}</p>
+                  </section>
                 )}
-                {proposal.validity_days && (
-                  <div className="glass rounded-xl p-4">
-                    <p className="text-xs text-muted-foreground">Validade</p>
-                    <p className="text-lg font-bold text-foreground">{proposal.validity_days} dias</p>
-                  </div>
+
+                {/* Hosting */}
+                {proposal.hosting && (
+                  <section>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">5. Hospedagem e Infraestrutura</h3>
+                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{proposal.hosting}</p>
+                  </section>
                 )}
-                {proposal.payment_terms && (
-                  <div className="glass rounded-xl p-4">
-                    <p className="text-xs text-muted-foreground">Pagamento</p>
-                    <p className="text-sm font-medium text-foreground">{proposal.payment_terms}</p>
+
+                {/* Investment */}
+                <section>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">Investimento</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {proposal.value && (
+                      <div className="bg-blue-50 rounded-lg p-4 text-center">
+                        <p className="text-xs text-gray-500 mb-1">Valor Total</p>
+                        <p className="text-xl font-bold text-blue-600">R$ {Number(proposal.value).toLocaleString('pt-BR')}</p>
+                      </div>
+                    )}
+                    {proposal.deadline && (
+                      <div className="bg-gray-50 rounded-lg p-4 text-center">
+                        <p className="text-xs text-gray-500 mb-1">Prazo</p>
+                        <p className="text-lg font-bold text-gray-900">{proposal.deadline}</p>
+                      </div>
+                    )}
+                    {proposal.validity_days && (
+                      <div className="bg-gray-50 rounded-lg p-4 text-center">
+                        <p className="text-xs text-gray-500 mb-1">Validade</p>
+                        <p className="text-lg font-bold text-gray-900">{proposal.validity_days} dias</p>
+                      </div>
+                    )}
+                    {proposal.payment_terms && (
+                      <div className="bg-gray-50 rounded-lg p-4 text-center">
+                        <p className="text-xs text-gray-500 mb-1">Pagamento</p>
+                        <p className="text-sm font-medium text-gray-900">{proposal.payment_terms}</p>
+                      </div>
+                    )}
                   </div>
+                </section>
+
+                {/* Guarantee */}
+                {proposal.guarantee && (
+                  <section>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">Garantia</h3>
+                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{proposal.guarantee}</p>
+                  </section>
                 )}
+
+                {/* Footer */}
+                <div className="border-t border-gray-200 pt-6 text-center">
+                  <p className="text-xs text-gray-400">Proposta gerada em {new Date(proposal.created_at).toLocaleDateString('pt-BR')}</p>
+                  <p className="text-xs text-gray-400">© {new Date().getFullYear()} Mateus Dias Tech. Todos os direitos reservados.</p>
+                </div>
               </div>
             </div>
 
-            {/* Actions */}
+            {/* Actions (outside document for PDF) */}
             {(proposal.status as string) !== "aprovada" && (
-              <div className="glass-card rounded-2xl p-6">
-                <h3 className="text-sm font-semibold text-foreground mb-4">O que deseja fazer?</h3>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6 print:hidden">
+                <h3 className="text-sm font-semibold text-gray-900 mb-4">O que deseja fazer?</h3>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <button onClick={handleApprove}
-                    className="px-6 py-3 rounded-xl bg-neon-green/20 text-neon-green font-medium text-sm hover:bg-neon-green/30 transition-colors flex-1">
+                    className="px-6 py-3 rounded-lg bg-green-50 text-green-700 font-medium text-sm hover:bg-green-100 transition-colors flex-1 border border-green-200">
                     ✅ Aprovar Proposta
                   </button>
-                  <button onClick={() => setComment("")}
-                    className="px-6 py-3 rounded-xl bg-accent/20 text-accent font-medium text-sm hover:bg-accent/30 transition-colors flex-1">
+                  <button onClick={() => setShowAdjustForm(true)}
+                    className="px-6 py-3 rounded-lg bg-amber-50 text-amber-700 font-medium text-sm hover:bg-amber-100 transition-colors flex-1 border border-amber-200">
                     ✏️ Solicitar Ajustes
                   </button>
                 </div>
-                {comment !== undefined && proposal.status !== "aprovada" && (
-                  <div className="mt-4">
+
+                {/* Adjust form */}
+                {showAdjustForm && (
+                  <div className="mt-4 space-y-3">
                     <textarea
-                      value={comment}
-                      onChange={e => setComment(e.target.value)}
+                      value={adjustMessage}
+                      onChange={e => setAdjustMessage(e.target.value)}
                       placeholder="Descreva os ajustes desejados..."
-                      rows={3}
-                      className="w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                      rows={4}
+                      className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
                     />
-                    <button onClick={handleRequestChanges}
-                      className="mt-2 px-4 py-2 rounded-xl bg-accent text-accent-foreground text-sm font-medium">
-                      Enviar Ajustes
-                    </button>
+                    <div className="flex gap-2">
+                      <button onClick={() => setShowAdjustForm(false)}
+                        className="px-4 py-2 rounded-lg text-sm text-gray-500 hover:text-gray-700">Cancelar</button>
+                      <button onClick={handleRequestChanges}
+                        className="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700">
+                        Enviar Ajustes
+                      </button>
+                    </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {(proposal.status as string) === "aprovada" && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-6 mt-6 text-center print:hidden">
+                <CheckCircle size={32} className="text-green-500 mx-auto mb-2" />
+                <p className="text-green-700 font-semibold">Proposta Aprovada!</p>
               </div>
             )}
           </div>
         )}
 
-        {/* Contract Tab */}
+        {/* Contract Tab - Document Style */}
         {activeTab === "contract" && contract && (
-          <div className="space-y-6">
-            <div className="glass-card rounded-2xl p-8">
-              <h2 className="text-2xl font-bold text-foreground mb-4">{contract.title}</h2>
-
-              <div className="grid md:grid-cols-2 gap-6 mb-6">
-                {contract.client_name && (
+          <div>
+            <div ref={contractRef} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-gradient-to-r from-gray-800 to-gray-900 px-8 py-6 text-white">
+                <div className="flex items-center gap-4 mb-4">
+                  <img src={logo} alt="Logo" className="w-10 h-10 rounded" />
                   <div>
-                    <p className="text-xs text-muted-foreground">Contratante</p>
-                    <p className="text-sm text-foreground">{contract.client_name}</p>
-                    {contract.client_document && <p className="text-xs text-muted-foreground">{contract.client_document}</p>}
+                    <p className="text-sm font-medium opacity-90">Mateus Dias Tech</p>
+                    <p className="text-xs opacity-75">Contrato de Prestação de Serviços</p>
                   </div>
-                )}
-                <div>
-                  <p className="text-xs text-muted-foreground">Contratada</p>
-                  <p className="text-sm text-foreground">Mateus Dias — Engenheiro da Computação</p>
                 </div>
+                <h2 className="text-2xl font-bold">{contract.title}</h2>
               </div>
 
-              {contract.scope && (
-                <div className="mb-6">
-                  <h3 className="text-sm font-semibold text-foreground mb-2">Escopo do Projeto</h3>
-                  <p className="text-sm text-muted-foreground whitespace-pre-line">{contract.scope}</p>
-                </div>
-              )}
+              <div className="px-8 py-6 space-y-6">
+                {/* Parties */}
+                <section>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">Partes</h3>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <p className="text-xs text-gray-500 font-medium mb-1">CONTRATANTE</p>
+                      <p className="text-sm font-semibold text-gray-900">{contract.client_name || "—"}</p>
+                      {contract.client_document && <p className="text-xs text-gray-500 mt-1">CPF/CNPJ: {contract.client_document}</p>}
+                      {contract.client_address && <p className="text-xs text-gray-500">Endereço: {contract.client_address}</p>}
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <p className="text-xs text-gray-500 font-medium mb-1">CONTRATADA</p>
+                      <p className="text-sm font-semibold text-gray-900">Mateus Dias</p>
+                      <p className="text-xs text-gray-500 mt-1">Engenheiro da Computação</p>
+                    </div>
+                  </div>
+                </section>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-                {contract.value && (
-                  <div className="glass rounded-xl p-4">
-                    <p className="text-xs text-muted-foreground">Valor</p>
-                    <p className="text-lg font-bold text-foreground">R$ {Number(contract.value).toLocaleString('pt-BR')}</p>
-                  </div>
+                {/* Scope */}
+                {contract.scope && (
+                  <section>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">Escopo do Projeto</h3>
+                    <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">{contract.scope}</p>
+                  </section>
                 )}
-                {contract.deadline && (
-                  <div className="glass rounded-xl p-4">
-                    <p className="text-xs text-muted-foreground">Prazo</p>
-                    <p className="text-lg font-bold text-foreground">{contract.deadline}</p>
-                  </div>
-                )}
-                {contract.payment_terms && (
-                  <div className="glass rounded-xl p-4">
-                    <p className="text-xs text-muted-foreground">Pagamento</p>
-                    <p className="text-sm font-medium text-foreground">{contract.payment_terms}</p>
-                  </div>
-                )}
-              </div>
 
-              {/* Signatures */}
-              <div className="border-t border-border pt-6">
-                <h3 className="text-sm font-semibold text-foreground mb-4">Assinaturas</h3>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="glass rounded-xl p-4">
-                    <p className="text-xs text-muted-foreground mb-2">Contratada (Admin)</p>
-                    {contract.admin_signature_data ? (
-                      <div>
-                        <p className="text-sm text-neon-green">✓ Assinado</p>
-                        <p className="text-xs text-muted-foreground">{new Date(contract.admin_signature_date!).toLocaleString('pt-BR')}</p>
+                {/* Terms */}
+                <section>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">Termos</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {contract.value && (
+                      <div className="bg-blue-50 rounded-lg p-4 text-center">
+                        <p className="text-xs text-gray-500">Valor</p>
+                        <p className="text-xl font-bold text-blue-600">R$ {Number(contract.value).toLocaleString('pt-BR')}</p>
                       </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">Pendente</p>
+                    )}
+                    {contract.deadline && (
+                      <div className="bg-gray-50 rounded-lg p-4 text-center">
+                        <p className="text-xs text-gray-500">Prazo</p>
+                        <p className="text-lg font-bold text-gray-900">{contract.deadline}</p>
+                      </div>
+                    )}
+                    {contract.payment_terms && (
+                      <div className="bg-gray-50 rounded-lg p-4 text-center">
+                        <p className="text-xs text-gray-500">Pagamento</p>
+                        <p className="text-sm font-medium text-gray-900">{contract.payment_terms}</p>
+                      </div>
                     )}
                   </div>
-                  <div className="glass rounded-xl p-4">
-                    <p className="text-xs text-muted-foreground mb-2">Contratante (Cliente)</p>
-                    {contract.client_signature_data ? (
-                      <div>
-                        <p className="text-sm text-neon-green">✓ Assinado</p>
-                        <p className="text-xs text-muted-foreground">{new Date(contract.client_signature_date!).toLocaleString('pt-BR')}</p>
-                      </div>
-                    ) : (
-                      <button onClick={() => setShowSignature(true)}
-                        className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 mt-1">
-                        Assinar Contrato
-                      </button>
-                    )}
+                </section>
+
+                {/* Signatures */}
+                <section className="border-t border-gray-200 pt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Assinaturas</h3>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <p className="text-xs text-gray-500 font-medium mb-2">CONTRATADA</p>
+                      {contract.admin_signature_data ? (
+                        <div>
+                          {contract.admin_signature_data.startsWith("data:image") ? (
+                            <img src={contract.admin_signature_data} alt="Assinatura Admin" className="h-16 object-contain" />
+                          ) : (
+                            <p className="text-sm text-green-600 font-medium">✓ {contract.admin_signature_data}</p>
+                          )}
+                          <p className="text-xs text-gray-400 mt-2">{new Date(contract.admin_signature_date!).toLocaleString('pt-BR')}</p>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-400">Pendente</p>
+                      )}
+                    </div>
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <p className="text-xs text-gray-500 font-medium mb-2">CONTRATANTE</p>
+                      {contract.client_signature_data ? (
+                        <div>
+                          <img src={contract.client_signature_data} alt="Assinatura Cliente" className="h-16 object-contain" />
+                          <p className="text-xs text-gray-400 mt-2">{new Date(contract.client_signature_date!).toLocaleString('pt-BR')}</p>
+                        </div>
+                      ) : (
+                        <button onClick={() => setShowSignature(true)}
+                          className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 mt-1 print:hidden">
+                          Assinar Contrato
+                        </button>
+                      )}
+                    </div>
                   </div>
+                </section>
+
+                <div className="border-t border-gray-200 pt-6 text-center">
+                  <p className="text-xs text-gray-400">Contrato gerado em {new Date(contract.created_at).toLocaleString('pt-BR')}</p>
+                  <p className="text-xs text-gray-400">© {new Date().getFullYear()} Mateus Dias Tech</p>
                 </div>
               </div>
             </div>
-
-            {/* Signature Modal */}
-            {showSignature && (
-              <div className="fixed inset-0 z-50 bg-background/80 flex items-center justify-center p-4" onClick={() => setShowSignature(false)}>
-                <div className="glass-card rounded-2xl p-6 w-full max-w-lg" onClick={e => e.stopPropagation()}>
-                  <h3 className="text-lg font-bold text-foreground mb-4">Assinatura Digital</h3>
-                  <p className="text-xs text-muted-foreground mb-4">Desenhe sua assinatura no campo abaixo</p>
-                  <canvas
-                    ref={canvasRef}
-                    width={450}
-                    height={200}
-                    className="w-full border border-border rounded-xl bg-secondary cursor-crosshair"
-                    onMouseDown={startDraw}
-                    onMouseMove={draw}
-                    onMouseUp={stopDraw}
-                    onMouseLeave={stopDraw}
-                  />
-                  <div className="flex gap-3 mt-4">
-                    <button onClick={clearCanvas} className="px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground">Limpar</button>
-                    <button onClick={() => setShowSignature(false)} className="px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground">Cancelar</button>
-                    <button onClick={handleSign} className="px-6 py-2 rounded-xl bg-neon-green/20 text-neon-green text-sm font-medium hover:bg-neon-green/30 ml-auto">
-                      Confirmar Assinatura
-                    </button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-3">
-                    Ao assinar, você concorda com os termos deste contrato. Sua assinatura será registrada com data, hora e IP.
-                  </p>
-                </div>
-              </div>
-            )}
           </div>
         )}
 
         {/* Payment Tab */}
         {activeTab === "payment" && contract && (
-          <div className="space-y-6">
-            <div className="glass-card rounded-2xl p-8">
-              <h2 className="text-xl font-bold text-foreground mb-6">Pagamento</h2>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">Pagamento</h2>
 
-              {contract.value && (
-                <div className="glass rounded-xl p-6 text-center mb-6">
-                  <p className="text-xs text-muted-foreground mb-1">Valor Total</p>
-                  <p className="text-3xl font-bold text-foreground">R$ {Number(contract.value).toLocaleString('pt-BR')}</p>
+            {contract.value && (
+              <div className="bg-blue-50 rounded-lg p-6 text-center mb-6 border border-blue-100">
+                <p className="text-xs text-gray-500 mb-1">Valor Total</p>
+                <p className="text-3xl font-bold text-blue-600">R$ {Number(contract.value).toLocaleString('pt-BR')}</p>
+              </div>
+            )}
+
+            <div className="grid md:grid-cols-2 gap-6">
+              {(contract.pix_key || contract.pix_qr_code_url) && (
+                <div className="border border-gray-200 rounded-lg p-6">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-4">💰 PIX</h3>
+                  {contract.pix_value && (
+                    <p className="text-lg font-bold text-gray-900 mb-4">R$ {Number(contract.pix_value).toLocaleString('pt-BR')}</p>
+                  )}
+                  {contract.pix_qr_code_url && (
+                    <div className="mb-4 flex justify-center">
+                      <img src={contract.pix_qr_code_url} alt="QR Code PIX" className="w-48 h-48 rounded-lg" />
+                    </div>
+                  )}
+                  {contract.pix_key && (
+                    <div className="flex items-center gap-2">
+                      <input value={contract.pix_key} readOnly className="flex-1 px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-900 text-sm" />
+                      <button onClick={() => { navigator.clipboard.writeText(contract.pix_key!); toast.success("Chave copiada!"); }}
+                        className="px-3 py-2 rounded-lg bg-blue-600 text-white">
+                        <Copy size={16} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
-              <div className="grid md:grid-cols-2 gap-6">
-                {/* PIX */}
-                {(contract.pix_key || contract.pix_qr_code_url) && (
-                  <div className="glass rounded-xl p-6">
-                    <h3 className="text-sm font-semibold text-foreground mb-4">💰 PIX</h3>
-                    {contract.pix_value && (
-                      <p className="text-lg font-bold text-foreground mb-4">R$ {Number(contract.pix_value).toLocaleString('pt-BR')}</p>
-                    )}
-                    {contract.pix_qr_code_url && (
-                      <div className="mb-4 flex justify-center">
-                        <img src={contract.pix_qr_code_url} alt="QR Code PIX" className="w-48 h-48 rounded-xl" />
-                      </div>
-                    )}
-                    {contract.pix_key && (
-                      <div className="flex items-center gap-2">
-                        <input value={contract.pix_key} readOnly className="flex-1 px-3 py-2 rounded-xl bg-secondary border border-border text-foreground text-sm" />
-                        <button onClick={() => { navigator.clipboard.writeText(contract.pix_key!); toast.success("Chave copiada!"); }}
-                          className="px-3 py-2 rounded-xl bg-primary text-primary-foreground">
-                          <Copy size={16} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Cartão */}
-                {contract.mercadopago_link && (
-                  <div className="glass rounded-xl p-6">
-                    <h3 className="text-sm font-semibold text-foreground mb-4">💳 Cartão de Crédito</h3>
-                    <p className="text-sm text-muted-foreground mb-4">Pague com cartão de crédito pelo Mercado Pago</p>
-                    <a href={contract.mercadopago_link} target="_blank" rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:opacity-90 transition-all">
-                      <ExternalLink size={16} /> Pagar com Cartão
-                    </a>
-                  </div>
-                )}
-              </div>
+              {contract.mercadopago_link && (
+                <div className="border border-gray-200 rounded-lg p-6">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-4">💳 Cartão de Crédito</h3>
+                  <p className="text-sm text-gray-500 mb-4">Pague com cartão pelo Mercado Pago</p>
+                  <a href={contract.mercadopago_link} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-blue-600 text-white font-medium text-sm hover:bg-blue-700">
+                    <ExternalLink size={16} /> Pagar com Cartão
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         )}
       </div>
 
+      {/* Signature Modal */}
+      {showSignature && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowSignature(false)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Assinatura Digital</h3>
+              <button onClick={() => setShowSignature(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            </div>
+
+            <div className="mb-4">
+              <label className="text-sm text-gray-600 mb-2 block">Seu nome completo</label>
+              <input value={signerName} onChange={e => setSignerName(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                placeholder="Digite seu nome..." />
+            </div>
+
+            <div className="flex gap-2 mb-4">
+              <button onClick={() => setSignatureMode("auto")}
+                className={`px-3 py-2 rounded-lg text-xs font-medium ${signatureMode === "auto" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600"}`}>
+                Assinatura Automática
+              </button>
+              <button onClick={() => setSignatureMode("draw")}
+                className={`px-3 py-2 rounded-lg text-xs font-medium ${signatureMode === "draw" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600"}`}>
+                Desenhar Assinatura
+              </button>
+            </div>
+
+            {signatureMode === "auto" && signerName && (
+              <div className="border border-gray-200 rounded-lg p-6 mb-4 bg-gray-50 text-center">
+                <p className="text-3xl italic text-gray-800" style={{ fontFamily: "Georgia, serif" }}>{signerName}</p>
+              </div>
+            )}
+
+            {signatureMode === "draw" && (
+              <div className="mb-4">
+                <canvas
+                  ref={canvasRef}
+                  width={450}
+                  height={200}
+                  className="w-full border border-gray-200 rounded-lg bg-white cursor-crosshair"
+                  onMouseDown={startDraw}
+                  onMouseMove={draw}
+                  onMouseUp={stopDraw}
+                  onMouseLeave={stopDraw}
+                />
+                <button onClick={clearCanvas} className="text-xs text-gray-400 hover:text-gray-600 mt-2">Limpar</button>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button onClick={() => setShowSignature(false)} className="px-4 py-2 rounded-lg text-sm text-gray-500 hover:text-gray-700">Cancelar</button>
+              <button onClick={handleSign} className="px-6 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 ml-auto">
+                Confirmar Assinatura
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 mt-3">
+              Ao assinar, você concorda com os termos. Sua assinatura será registrada com data, hora e IP.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Selection Modal */}
+      {showPaymentSelect && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowPaymentSelect(false)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Escolha a forma de pagamento</h3>
+              <button onClick={() => setShowPaymentSelect(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            </div>
+
+            <div className="space-y-3 mb-4">
+              {paymentMethods.map((pm, i) => (
+                <button key={i} onClick={() => setSelectedPayment(pm)}
+                  className={`w-full text-left p-4 rounded-lg border transition-all ${selectedPayment?.id === pm.id ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:bg-gray-50"}`}>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-900 capitalize">{pm.type}</span>
+                    {pm.amount && <span className="text-sm font-bold text-blue-600">R$ {Number(pm.amount).toLocaleString('pt-BR')}</span>}
+                  </div>
+                  {pm.description && <p className="text-xs text-gray-500 mt-1">{pm.description}</p>}
+                </button>
+              ))}
+            </div>
+
+            {selectedPayment && (
+              <div className="border border-gray-200 rounded-lg p-4 mb-4">
+                {(selectedPayment.type === "pix" || selectedPayment.type === "qrcode") && selectedPayment.qr_code_url && (
+                  <div className="text-center">
+                    <img src={selectedPayment.qr_code_url} alt="QR Code" className="w-48 h-48 mx-auto rounded-lg mb-2" />
+                    {selectedPayment.pix_key && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <input value={selectedPayment.pix_key} readOnly className="flex-1 px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-sm" />
+                        <button onClick={() => { navigator.clipboard.writeText(selectedPayment.pix_key); toast.success("Chave copiada!"); }}
+                          className="px-3 py-2 rounded-lg bg-blue-600 text-white"><Copy size={14} /></button>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {(selectedPayment.type === "mercadopago" || selectedPayment.type === "cartao") && selectedPayment.payment_link && (
+                  <a href={selectedPayment.payment_link} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-blue-600 text-white font-medium text-sm hover:bg-blue-700">
+                    <ExternalLink size={16} /> Pagar
+                  </a>
+                )}
+              </div>
+            )}
+
+            <button onClick={handleApproveWithPayment}
+              className="w-full px-6 py-3 rounded-lg bg-green-600 text-white font-medium text-sm hover:bg-green-700">
+              ✅ Confirmar Aprovação
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Footer */}
-      <footer className="border-t border-border py-6 mt-12">
+      <footer className="border-t border-gray-200 py-6 mt-12 bg-white print:hidden">
         <div className="container mx-auto px-6 text-center">
-          <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} Mateus Dias Tech. Todos os direitos reservados.</p>
+          <p className="text-xs text-gray-400">© {new Date().getFullYear()} Mateus Dias Tech. Todos os direitos reservados.</p>
         </div>
       </footer>
     </div>
