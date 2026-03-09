@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, Outlet, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard, Users, FileText, ScrollText, CreditCard, FolderKanban,
-  BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, MessageCircle
+  BarChart3, Settings, LogOut, ChevronLeft, ChevronRight
 } from "lucide-react";
 import logo from "@/assets/Logo.png";
 import type { User } from "@supabase/supabase-js";
@@ -26,29 +26,46 @@ const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const validateAdminSession = useCallback(async (sessionUser: User | null) => {
+    if (!sessionUser) {
+      setUser(null);
+      setLoading(false);
+      navigate("/admin/login", { replace: true });
+      return;
+    }
+
+    const { data: isAdmin, error } = await (supabase as any).rpc("has_role", {
+      _user_id: sessionUser.id,
+      _role: "admin",
+    });
+
+    if (error || !isAdmin) {
+      await supabase.auth.signOut();
+      setUser(null);
+      setLoading(false);
+      navigate("/admin/login", { replace: true });
+      return;
+    }
+
+    setUser(sessionUser);
+    setLoading(false);
+  }, [navigate]);
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-      if (!session?.user) {
-        navigate("/admin/login");
-      }
+      void validateAdminSession(session?.user ?? null);
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-      if (!session?.user) {
-        navigate("/admin/login");
-      }
+      void validateAdminSession(session?.user ?? null);
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [validateAdminSession]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate("/admin/login");
+    navigate("/admin/login", { replace: true });
   };
 
   if (loading) {
