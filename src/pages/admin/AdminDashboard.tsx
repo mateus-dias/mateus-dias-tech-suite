@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Users, FileText, ScrollText, CreditCard, TrendingUp, Eye } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
+import { format, subDays, startOfMonth, endOfMonth, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
@@ -12,32 +14,90 @@ const AdminDashboard = () => {
     visits: 0,
     revenue: 0,
   });
+  const [funnelData, setFunnelData] = useState<any[]>([]);
+  const [visitData, setVisitData] = useState<any[]>([]);
 
   useEffect(() => {
-    const fetchStats = async () => {
-      const [leads, proposals, contracts, payments, visits] = await Promise.all([
-        supabase.from("leads").select("id", { count: "exact", head: true }),
-        supabase.from("proposals").select("id", { count: "exact", head: true }),
-        supabase.from("contracts").select("id", { count: "exact", head: true }),
-        supabase.from("payments").select("value, status"),
-        supabase.from("site_visits").select("id", { count: "exact", head: true }),
+    fetchStats();
+    fetchFunnelData();
+    fetchVisitData();
+  }, []);
+
+  const fetchStats = async () => {
+    const [leads, proposals, contracts, payments, visits] = await Promise.all([
+      supabase.from("leads").select("id", { count: "exact", head: true }),
+      supabase.from("proposals").select("id", { count: "exact", head: true }),
+      supabase.from("contracts").select("id", { count: "exact", head: true }),
+      supabase.from("payments").select("value, status"),
+      supabase.from("site_visits").select("id", { count: "exact", head: true }),
+    ]);
+
+    const paidPayments = (payments.data || []).filter(p => p.status === 'pago');
+    const revenue = paidPayments.reduce((sum, p) => sum + (Number(p.value) || 0), 0);
+
+    setStats({
+      totalLeads: leads.count || 0,
+      proposals: proposals.count || 0,
+      contracts: contracts.count || 0,
+      payments: paidPayments.length,
+      visits: visits.count || 0,
+      revenue,
+    });
+  };
+
+  const fetchFunnelData = async () => {
+    const now = new Date();
+    const months: any[] = [];
+
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const start = startOfMonth(date).toISOString();
+      const end = endOfMonth(date).toISOString();
+      const label = format(date, "MMM", { locale: ptBR });
+
+      const [leads, proposals, approved, contracts, payments] = await Promise.all([
+        supabase.from("leads").select("id", { count: "exact", head: true })
+          .gte("created_at", start).lte("created_at", end),
+        supabase.from("proposals").select("id", { count: "exact", head: true })
+          .gte("created_at", start).lte("created_at", end),
+        supabase.from("proposals").select("id", { count: "exact", head: true })
+          .gte("created_at", start).lte("created_at", end).eq("status", "aprovada"),
+        supabase.from("contracts").select("id", { count: "exact", head: true })
+          .gte("created_at", start).lte("created_at", end),
+        supabase.from("payments").select("id", { count: "exact", head: true })
+          .gte("created_at", start).lte("created_at", end).eq("status", "pago"),
       ]);
 
-      const paidPayments = (payments.data || []).filter(p => p.status === 'pago');
-      const revenue = paidPayments.reduce((sum, p) => sum + (Number(p.value) || 0), 0);
-
-      setStats({
-        totalLeads: leads.count || 0,
-        proposals: proposals.count || 0,
-        contracts: contracts.count || 0,
-        payments: paidPayments.length,
-        visits: visits.count || 0,
-        revenue,
+      months.push({
+        month: label.charAt(0).toUpperCase() + label.slice(1),
+        leads: leads.count || 0,
+        propostas: proposals.count || 0,
+        aprovadas: approved.count || 0,
+        contratos: contracts.count || 0,
+        pagamentos: payments.count || 0,
       });
-    };
+    }
 
-    fetchStats();
-  }, []);
+    setFunnelData(months);
+  };
+
+  const fetchVisitData = async () => {
+    const days: any[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = subDays(new Date(), i);
+      const start = new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString();
+      const end = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59).toISOString();
+
+      const { count } = await supabase.from("site_visits").select("id", { count: "exact", head: true })
+        .gte("created_at", start).lte("created_at", end);
+
+      days.push({
+        day: format(date, "EEE", { locale: ptBR }).replace(/^\w/, c => c.toUpperCase()),
+        visitas: count || 0,
+      });
+    }
+    setVisitData(days);
+  };
 
   const statCards = [
     { label: "Leads", value: stats.totalLeads, icon: Users, color: "text-primary" },
@@ -48,26 +108,6 @@ const AdminDashboard = () => {
     { label: "Faturamento", value: `R$ ${stats.revenue.toLocaleString('pt-BR')}`, icon: TrendingUp, color: "text-primary" },
   ];
 
-  // Placeholder chart data
-  const chartData = [
-    { month: "Jan", leads: 4, propostas: 2, contratos: 1 },
-    { month: "Fev", leads: 6, propostas: 4, contratos: 2 },
-    { month: "Mar", leads: 8, propostas: 5, contratos: 3 },
-    { month: "Abr", leads: 5, propostas: 3, contratos: 2 },
-    { month: "Mai", leads: 10, propostas: 7, contratos: 4 },
-    { month: "Jun", leads: 12, propostas: 8, contratos: 5 },
-  ];
-
-  const visitData = [
-    { day: "Seg", visitas: 45 },
-    { day: "Ter", visitas: 62 },
-    { day: "Qua", visitas: 38 },
-    { day: "Qui", visitas: 71 },
-    { day: "Sex", visitas: 55 },
-    { day: "Sab", visitas: 28 },
-    { day: "Dom", visitas: 15 },
-  ];
-
   return (
     <div className="p-6 lg:p-8">
       <div className="mb-8">
@@ -75,7 +115,6 @@ const AdminDashboard = () => {
         <p className="text-sm text-muted-foreground">Visão geral da sua plataforma</p>
       </div>
 
-      {/* Stat Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
         {statCards.map((card, i) => {
           const Icon = card.icon;
@@ -91,12 +130,11 @@ const AdminDashboard = () => {
         })}
       </div>
 
-      {/* Charts */}
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="glass-card rounded-xl p-6">
-          <h3 className="text-sm font-semibold text-foreground mb-4">Funil de Vendas</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-4">Funil de Vendas (últimos 6 meses)</h3>
           <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={chartData}>
+            <BarChart data={funnelData}>
               <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
               <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
               <Tooltip
@@ -107,15 +145,16 @@ const AdminDashboard = () => {
                   color: "hsl(var(--foreground))",
                 }}
               />
-              <Bar dataKey="leads" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="propostas" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="contratos" fill="hsl(var(--neon-green))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="leads" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Leads" />
+              <Bar dataKey="propostas" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} name="Propostas" />
+              <Bar dataKey="contratos" fill="hsl(var(--neon-green))" radius={[4, 4, 0, 0]} name="Contratos" />
+              <Bar dataKey="pagamentos" fill="hsl(var(--neon-purple))" radius={[4, 4, 0, 0]} name="Pagamentos" />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         <div className="glass-card rounded-xl p-6">
-          <h3 className="text-sm font-semibold text-foreground mb-4">Visitas no Site</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-4">Visitas no Site (últimos 7 dias)</h3>
           <ResponsiveContainer width="100%" height={250}>
             <AreaChart data={visitData}>
               <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={12} />
