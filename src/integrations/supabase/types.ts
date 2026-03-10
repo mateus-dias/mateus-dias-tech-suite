@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      contract_payments: {
+        Row: {
+          amount: number | null
+          contract_id: string
+          created_at: string
+          description: string | null
+          id: string
+          payment_link: string | null
+          pix_key: string | null
+          qr_code_url: string | null
+          type: string
+        }
+        Insert: {
+          amount?: number | null
+          contract_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          payment_link?: string | null
+          pix_key?: string | null
+          qr_code_url?: string | null
+          type?: string
+        }
+        Update: {
+          amount?: number | null
+          contract_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          payment_link?: string | null
+          pix_key?: string | null
+          qr_code_url?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_payments_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_signatures: {
         Row: {
           contract_id: string

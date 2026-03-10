@@ -1,12 +1,23 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Search, Copy, ExternalLink, Trash2, X, Pen } from "lucide-react";
+import { Plus, Search, Copy, ExternalLink, Trash2, X, Pen, Upload } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 
 type Contract = Database["public"]["Tables"]["contracts"]["Row"];
 type Lead = Database["public"]["Tables"]["leads"]["Row"];
 type Proposal = Database["public"]["Tables"]["proposals"]["Row"];
+
+interface ContractPayment {
+  id?: string;
+  type: string;
+  description: string;
+  amount: string;
+  pix_key: string;
+  qr_code_url: string;
+  payment_link: string;
+  _qrFile?: File | null;
+}
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   rascunho: { label: "Rascunho", color: "bg-muted text-muted-foreground" },
@@ -25,13 +36,11 @@ const AdminContracts = () => {
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Contract | null>(null);
-  const [showSignModal, setShowSignModal] = useState(false);
-  const [signingContract, setSigningContract] = useState<Contract | null>(null);
+  const [paymentMethods, setPaymentMethods] = useState<ContractPayment[]>([]);
 
   const defaultForm = {
     lead_id: "", proposal_id: "", title: "", scope: "", deadline: "", value: "",
     payment_terms: "", client_name: "", client_document: "", client_address: "",
-    pix_key: "", pix_qr_code_url: "", pix_value: "", mercadopago_link: "",
   };
   const [form, setForm] = useState(defaultForm);
 
@@ -46,6 +55,29 @@ const AdminContracts = () => {
     if (c) setContracts(c);
     if (l) setLeads(l);
     if (p) setProposals(p);
+  };
+
+  const fetchPayments = async (contractId: string) => {
+    const { data } = await supabase.from("contract_payments")
+      .select("*").eq("contract_id", contractId).order("created_at");
+    return (data || []).map((pm: any) => ({
+      id: pm.id,
+      type: pm.type,
+      description: pm.description || "",
+      amount: pm.amount?.toString() || "",
+      pix_key: pm.pix_key || "",
+      qr_code_url: pm.qr_code_url || "",
+      payment_link: pm.payment_link || "",
+    }));
+  };
+
+  const uploadQrCode = async (file: File): Promise<string> => {
+    const ext = file.name.split(".").pop();
+    const path = `qrcodes/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from("uploads").upload(path, file);
+    if (error) throw error;
+    const { data } = supabase.storage.from("uploads").getPublicUrl(path);
+    return data.publicUrl;
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -64,22 +96,47 @@ const AdminContracts = () => {
       client_name: form.client_name || null,
       client_document: form.client_document || null,
       client_address: form.client_address || null,
-      pix_key: form.pix_key || null,
-      pix_qr_code_url: form.pix_qr_code_url || null,
-      pix_value: form.pix_value ? parseFloat(form.pix_value) : null,
-      mercadopago_link: form.mercadopago_link || null,
       user_id: user.id,
     };
+
+    let contractId = editing?.id;
 
     if (editing) {
       await supabase.from("contracts").update(payload).eq("id", editing.id);
     } else {
-      await supabase.from("contracts").insert(payload);
+      const { data } = await supabase.from("contracts").insert(payload).select().single();
+      if (data) contractId = data.id;
+    }
+
+    // Save payment methods
+    if (contractId) {
+      await supabase.from("contract_payments").delete().eq("contract_id", contractId);
+      
+      for (const pm of paymentMethods) {
+        let qrUrl = pm.qr_code_url;
+        if (pm._qrFile) {
+          try {
+            qrUrl = await uploadQrCode(pm._qrFile);
+          } catch (err) {
+            toast.error("Erro ao enviar QR Code");
+          }
+        }
+        await supabase.from("contract_payments").insert({
+          contract_id: contractId,
+          type: pm.type,
+          description: pm.description || null,
+          amount: pm.amount ? parseFloat(pm.amount) : null,
+          pix_key: pm.pix_key || null,
+          qr_code_url: qrUrl || null,
+          payment_link: pm.payment_link || null,
+        } as any);
+      }
     }
 
     setShowForm(false);
     setEditing(null);
     setForm(defaultForm);
+    setPaymentMethods([]);
     fetchData();
     toast.success(editing ? "Contrato atualizado!" : "Contrato criado!");
   };
@@ -101,7 +158,7 @@ const AdminContracts = () => {
     toast.success("Link copiado!");
   };
 
-  const editContract = (c: Contract) => {
+  const editContract = async (c: Contract) => {
     setEditing(c);
     setForm({
       lead_id: c.lead_id,
@@ -114,11 +171,9 @@ const AdminContracts = () => {
       client_name: c.client_name || "",
       client_document: c.client_document || "",
       client_address: c.client_address || "",
-      pix_key: c.pix_key || "",
-      pix_qr_code_url: c.pix_qr_code_url || "",
-      pix_value: c.pix_value?.toString() || "",
-      mercadopago_link: c.mercadopago_link || "",
     });
+    const pms = await fetchPayments(c.id);
+    setPaymentMethods(pms);
     setShowForm(true);
   };
 
@@ -135,9 +190,9 @@ const AdminContracts = () => {
       client_name: lead?.name || "",
       client_document: "",
       client_address: "",
-      pix_key: "", pix_qr_code_url: "", pix_value: "", mercadopago_link: "",
     });
     setEditing(null);
+    setPaymentMethods([]);
     setShowForm(true);
   };
 
@@ -162,6 +217,22 @@ const AdminContracts = () => {
 
   const approvedProposals = proposals.filter(p => p.status === "aprovada");
 
+  const addPaymentMethod = () => {
+    setPaymentMethods([...paymentMethods, {
+      type: "pix", description: "", amount: "", pix_key: "", qr_code_url: "", payment_link: "", _qrFile: null,
+    }]);
+  };
+
+  const updatePaymentMethod = (index: number, field: string, value: any) => {
+    const arr = [...paymentMethods];
+    arr[index] = { ...arr[index], [field]: value };
+    setPaymentMethods(arr);
+  };
+
+  const removePaymentMethod = (index: number) => {
+    setPaymentMethods(paymentMethods.filter((_, i) => i !== index));
+  };
+
   return (
     <div className="p-6 lg:p-8">
       <div className="flex items-center justify-between mb-6">
@@ -175,7 +246,7 @@ const AdminContracts = () => {
             <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar..."
               className="pl-9 pr-4 py-2 rounded-xl bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 w-48" />
           </div>
-          <button onClick={() => { setShowForm(true); setEditing(null); setForm(defaultForm); }}
+          <button onClick={() => { setShowForm(true); setEditing(null); setForm(defaultForm); setPaymentMethods([]); }}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90">
             <Plus size={16} /> Novo Contrato
           </button>
@@ -315,32 +386,64 @@ const AdminContracts = () => {
                   <input type="number" value={form.value} onChange={e => setForm({...form, value: e.target.value})} className={inputClass} />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Pagamento</label>
-                  <input value={form.payment_terms} onChange={e => setForm({...form, payment_terms: e.target.value})} className={inputClass} />
+                  <label className="text-xs text-muted-foreground mb-1 block">Condições de Pagamento</label>
+                  <input value={form.payment_terms} onChange={e => setForm({...form, payment_terms: e.target.value})} className={inputClass} placeholder="Ex: 50% entrada" />
                 </div>
               </div>
 
-              {/* Payment config */}
-              <div className="border border-border rounded-xl p-4 space-y-4">
-                <h3 className="text-sm font-semibold text-foreground">Configuração de Pagamento</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Chave PIX</label>
-                    <input value={form.pix_key} onChange={e => setForm({...form, pix_key: e.target.value})} className={inputClass} placeholder="Email, CPF ou chave aleatória" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Valor PIX (R$)</label>
-                    <input type="number" value={form.pix_value} onChange={e => setForm({...form, pix_value: e.target.value})} className={inputClass} />
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">URL QR Code PIX</label>
-                    <input value={form.pix_qr_code_url} onChange={e => setForm({...form, pix_qr_code_url: e.target.value})} className={inputClass} placeholder="URL da imagem do QR Code" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Link Mercado Pago</label>
-                    <input value={form.mercadopago_link} onChange={e => setForm({...form, mercadopago_link: e.target.value})} className={inputClass} placeholder="https://mpago.la/..." />
-                  </div>
+              {/* Payment Methods Section */}
+              <div className="border border-border rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-foreground">Formas de Pagamento</h3>
+                  <button type="button" onClick={addPaymentMethod} className="text-xs text-primary hover:underline">+ Adicionar forma</button>
                 </div>
+                {paymentMethods.map((pm, i) => (
+                  <div key={i} className="glass rounded-xl p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <select value={pm.type} onChange={e => updatePaymentMethod(i, "type", e.target.value)} className={inputClass + " w-auto"}>
+                        <option value="pix">PIX</option>
+                        <option value="credit_card">Cartão de Crédito</option>
+                      </select>
+                      <button type="button" onClick={() => removePaymentMethod(i)} className="text-muted-foreground hover:text-destructive"><X size={16} /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input value={pm.description} onChange={e => updatePaymentMethod(i, "description", e.target.value)} className={inputClass} placeholder="Descrição" />
+                      <input type="number" value={pm.amount} onChange={e => updatePaymentMethod(i, "amount", e.target.value)} className={inputClass} placeholder="Valor R$" />
+                    </div>
+                    {pm.type === "pix" && (
+                      <div className="space-y-2">
+                        <input value={pm.pix_key} onChange={e => updatePaymentMethod(i, "pix_key", e.target.value)} className={inputClass} placeholder="Chave PIX" />
+                        <div>
+                          <label className="text-xs text-muted-foreground mb-1 block">Upload QR Code PIX (PNG ou JPG)</label>
+                          <div className="flex items-center gap-2">
+                            <label className="flex items-center gap-2 px-3 py-2 rounded-xl bg-secondary border border-border text-foreground text-sm cursor-pointer hover:bg-secondary/80">
+                              <Upload size={14} />
+                              {pm._qrFile ? pm._qrFile.name : "Selecionar arquivo"}
+                              <input
+                                type="file"
+                                accept="image/png,image/jpeg"
+                                className="hidden"
+                                onChange={e => {
+                                  const file = e.target.files?.[0] || null;
+                                  updatePaymentMethod(i, "_qrFile", file);
+                                }}
+                              />
+                            </label>
+                            {pm.qr_code_url && !pm._qrFile && (
+                              <img src={pm.qr_code_url} alt="QR Code" className="w-10 h-10 rounded border border-border" />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {pm.type === "credit_card" && (
+                      <input value={pm.payment_link} onChange={e => updatePaymentMethod(i, "payment_link", e.target.value)} className={inputClass} placeholder="Link de pagamento (ex: https://www.mercadopago.com.br/...)" />
+                    )}
+                  </div>
+                ))}
+                {paymentMethods.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-2">Nenhuma forma de pagamento adicionada</p>
+                )}
               </div>
 
               <div className="flex gap-3 justify-end">
