@@ -20,10 +20,10 @@ const PublicPage = () => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [showAdjustForm, setShowAdjustForm] = useState(false);
   const [adjustMessage, setAdjustMessage] = useState("");
-  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
-  const [showPaymentSelect, setShowPaymentSelect] = useState(false);
+  const [contractPayments, setContractPayments] = useState<any[]>([]);
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [signatures, setSignatures] = useState<any[]>([]);
+  const [paymentChosen, setPaymentChosen] = useState(false);
   const proposalRef = useRef<HTMLDivElement>(null);
   const contractRef = useRef<HTMLDivElement>(null);
 
@@ -39,10 +39,6 @@ const PublicPage = () => {
 
     if (proposals && proposals.length > 0) {
       setProposal(proposals[0]);
-      // Fetch payment methods
-      const { data: pm } = await supabase.from("proposal_payments")
-        .select("*").eq("proposal_id", proposals[0].id);
-      setPaymentMethods(pm || []);
     }
 
     const { data: contracts } = await supabase
@@ -51,6 +47,10 @@ const PublicPage = () => {
     if (contracts && contracts.length > 0) {
       setContract(contracts[0]);
       setActiveTab("contract");
+      // Fetch contract payment methods
+      const { data: cpm } = await supabase.from("contract_payments")
+        .select("*").eq("contract_id", contracts[0].id);
+      setContractPayments(cpm || []);
       // Fetch signatures
       const { data: sigs } = await supabase.from("contract_signatures")
         .select("*").eq("contract_id", contracts[0].id);
@@ -109,6 +109,11 @@ const PublicPage = () => {
 
   const handleSign = async () => {
     if (!contract) return;
+    if (!paymentChosen && contractPayments.length > 0) {
+      toast.error("Selecione uma forma de pagamento antes de assinar.");
+      return;
+    }
+
     let signatureData: string;
 
     if (signatureMode === "auto") {
@@ -145,19 +150,7 @@ const PublicPage = () => {
 
   const handleApprove = async () => {
     if (!proposal) return;
-    if (paymentMethods.length > 0) {
-      setShowPaymentSelect(true);
-    } else {
-      await supabase.from("proposals").update({ status: "aprovada" }).eq("id", proposal.id);
-      fetchData();
-      toast.success("Proposta aprovada!");
-    }
-  };
-
-  const handleApproveWithPayment = async () => {
-    if (!proposal) return;
     await supabase.from("proposals").update({ status: "aprovada" }).eq("id", proposal.id);
-    setShowPaymentSelect(false);
     fetchData();
     toast.success("Proposta aprovada!");
   };
@@ -206,7 +199,6 @@ const PublicPage = () => {
     );
   }
 
-  // Professional document layout (white/light mode)
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -259,11 +251,10 @@ const PublicPage = () => {
           )}
         </div>
 
-        {/* Proposal Tab - Document Style */}
+        {/* Proposal Tab */}
         {activeTab === "proposal" && proposal && (
           <div>
             <div ref={proposalRef} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-              {/* Document Header */}
               <div className="bg-gradient-to-r from-blue-600 to-blue-800 px-8 py-6 text-white">
                 <div className="flex items-center gap-4 mb-4">
                   <img src={logo} alt="Logo" className="w-10 h-10 rounded" />
@@ -280,7 +271,6 @@ const PublicPage = () => {
               </div>
 
               <div className="px-8 py-6 space-y-8">
-                {/* Project Overview */}
                 {(proposal.project_overview || proposal.description) && (
                   <section>
                     <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">1. Visão Geral do Projeto</h3>
@@ -288,7 +278,6 @@ const PublicPage = () => {
                   </section>
                 )}
 
-                {/* Objectives */}
                 {proposal.objectives && (
                   <section>
                     <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">2. Objetivos do Sistema</h3>
@@ -296,7 +285,6 @@ const PublicPage = () => {
                   </section>
                 )}
 
-                {/* Functional Scope */}
                 {proposal.functional_scope && (
                   <section>
                     <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">3. Escopo Funcional</h3>
@@ -304,7 +292,6 @@ const PublicPage = () => {
                   </section>
                 )}
 
-                {/* Scope Lists */}
                 <div className="grid md:grid-cols-2 gap-6">
                   {proposal.scope_included?.length > 0 && proposal.scope_included[0] && (
                     <section>
@@ -334,7 +321,6 @@ const PublicPage = () => {
                   )}
                 </div>
 
-                {/* Technologies */}
                 {proposal.technologies && (
                   <section>
                     <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">4. Tecnologias Utilizadas</h3>
@@ -342,7 +328,6 @@ const PublicPage = () => {
                   </section>
                 )}
 
-                {/* Hosting */}
                 {proposal.hosting && (
                   <section>
                     <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">5. Hospedagem e Infraestrutura</h3>
@@ -353,7 +338,7 @@ const PublicPage = () => {
                 {/* Investment */}
                 <section>
                   <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">Investimento</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {proposal.value && (
                       <div className="bg-blue-50 rounded-lg p-4 text-center">
                         <p className="text-xs text-gray-500 mb-1">Valor Total</p>
@@ -372,16 +357,17 @@ const PublicPage = () => {
                         <p className="text-lg font-bold text-gray-900">{proposal.validity_days} dias</p>
                       </div>
                     )}
-                    {proposal.payment_terms && (
-                      <div className="bg-gray-50 rounded-lg p-4 text-center">
-                        <p className="text-xs text-gray-500 mb-1">Pagamento</p>
-                        <p className="text-sm font-medium text-gray-900">{proposal.payment_terms}</p>
-                      </div>
-                    )}
                   </div>
                 </section>
 
-                {/* Guarantee */}
+                {/* Payment Terms - text only */}
+                {proposal.payment_terms && (
+                  <section>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">Formas de Pagamento</h3>
+                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{proposal.payment_terms}</p>
+                  </section>
+                )}
+
                 {proposal.guarantee && (
                   <section>
                     <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">Garantia</h3>
@@ -389,7 +375,6 @@ const PublicPage = () => {
                   </section>
                 )}
 
-                {/* Footer */}
                 <div className="border-t border-gray-200 pt-6 text-center">
                   <p className="text-xs text-gray-400">Proposta gerada em {new Date(proposal.created_at).toLocaleDateString('pt-BR')}</p>
                   <p className="text-xs text-gray-400">© {new Date().getFullYear()} Mateus Dias Tech. Todos os direitos reservados.</p>
@@ -397,7 +382,7 @@ const PublicPage = () => {
               </div>
             </div>
 
-            {/* Actions (outside document for PDF) */}
+            {/* Actions */}
             {(proposal.status as string) !== "aprovada" && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6 print:hidden">
                 <h3 className="text-sm font-semibold text-gray-900 mb-4">O que deseja fazer?</h3>
@@ -412,7 +397,6 @@ const PublicPage = () => {
                   </button>
                 </div>
 
-                {/* Adjust form */}
                 {showAdjustForm && (
                   <div className="mt-4 space-y-3">
                     <textarea
@@ -444,7 +428,7 @@ const PublicPage = () => {
           </div>
         )}
 
-        {/* Contract Tab - Document Style */}
+        {/* Contract Tab */}
         {activeTab === "contract" && contract && (
           <div>
             <div ref={contractRef} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -538,10 +522,7 @@ const PublicPage = () => {
                           <p className="text-xs text-gray-400 mt-2">{new Date(contract.client_signature_date!).toLocaleString('pt-BR')}</p>
                         </div>
                       ) : (
-                        <button onClick={() => setShowSignature(true)}
-                          className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 mt-1 print:hidden">
-                          Assinar Contrato
-                        </button>
+                        <p className="text-xs text-gray-400">Pendente</p>
                       )}
                     </div>
                   </div>
@@ -553,6 +534,82 @@ const PublicPage = () => {
                 </div>
               </div>
             </div>
+
+            {/* Contract Actions - outside PDF area */}
+            {!contract.client_signature_data && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6 print:hidden">
+                <h3 className="text-sm font-semibold text-gray-900 mb-4">Para concluir o contrato:</h3>
+                
+                {/* Step 1: Choose payment */}
+                {contractPayments.length > 0 && (
+                  <div className="mb-6">
+                    <p className="text-xs text-gray-500 font-medium mb-3">1. Escolha a forma de pagamento</p>
+                    <div className="space-y-2">
+                      {contractPayments.map((pm, i) => (
+                        <button key={i} onClick={() => { setSelectedPayment(pm); setPaymentChosen(true); }}
+                          className={`w-full text-left p-4 rounded-lg border transition-all ${selectedPayment?.id === pm.id ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:bg-gray-50"}`}>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium text-gray-900">
+                              {pm.type === "pix" ? "💰 PIX" : "💳 Cartão de Crédito"}
+                            </span>
+                            {pm.amount && <span className="text-sm font-bold text-blue-600">R$ {Number(pm.amount).toLocaleString('pt-BR')}</span>}
+                          </div>
+                          {pm.description && <p className="text-xs text-gray-500 mt-1">{pm.description}</p>}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Show payment details */}
+                    {selectedPayment && (
+                      <div className="mt-4 border border-gray-200 rounded-lg p-4">
+                        {selectedPayment.type === "pix" && (
+                          <div className="text-center space-y-3">
+                            {selectedPayment.qr_code_url && (
+                              <img src={selectedPayment.qr_code_url} alt="QR Code PIX" className="w-48 h-48 mx-auto rounded-lg" />
+                            )}
+                            {selectedPayment.pix_key && (
+                              <div className="flex items-center gap-2 max-w-sm mx-auto">
+                                <input value={selectedPayment.pix_key} readOnly className="flex-1 px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-sm text-gray-900" />
+                                <button onClick={() => { navigator.clipboard.writeText(selectedPayment.pix_key); toast.success("Chave copiada!"); }}
+                                  className="px-3 py-2 rounded-lg bg-blue-600 text-white"><Copy size={14} /></button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {selectedPayment.type === "credit_card" && selectedPayment.payment_link && (
+                          <div className="text-center">
+                            <a href={selectedPayment.payment_link} target="_blank" rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-blue-600 text-white font-medium text-sm hover:bg-blue-700">
+                              <ExternalLink size={16} /> Pagar com Cartão
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Step 2: Sign */}
+                <div>
+                  <p className="text-xs text-gray-500 font-medium mb-3">
+                    {contractPayments.length > 0 ? "2. Assine o contrato" : "Assine o contrato"}
+                  </p>
+                  <button
+                    onClick={() => setShowSignature(true)}
+                    disabled={contractPayments.length > 0 && !paymentChosen}
+                    className="w-full px-6 py-3 rounded-lg bg-green-600 text-white font-medium text-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                    ✍️ Assinar Contrato Digitalmente
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {contract.client_signature_data && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-6 mt-6 text-center print:hidden">
+                <CheckCircle size={32} className="text-green-500 mx-auto mb-2" />
+                <p className="text-green-700 font-semibold">Contrato Assinado!</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -568,41 +625,45 @@ const PublicPage = () => {
               </div>
             )}
 
-            <div className="grid md:grid-cols-2 gap-6">
-              {(contract.pix_key || contract.pix_qr_code_url) && (
-                <div className="border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-4">💰 PIX</h3>
-                  {contract.pix_value && (
-                    <p className="text-lg font-bold text-gray-900 mb-4">R$ {Number(contract.pix_value).toLocaleString('pt-BR')}</p>
-                  )}
-                  {contract.pix_qr_code_url && (
-                    <div className="mb-4 flex justify-center">
-                      <img src={contract.pix_qr_code_url} alt="QR Code PIX" className="w-48 h-48 rounded-lg" />
-                    </div>
-                  )}
-                  {contract.pix_key && (
-                    <div className="flex items-center gap-2">
-                      <input value={contract.pix_key} readOnly className="flex-1 px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-900 text-sm" />
-                      <button onClick={() => { navigator.clipboard.writeText(contract.pix_key!); toast.success("Chave copiada!"); }}
-                        className="px-3 py-2 rounded-lg bg-blue-600 text-white">
-                        <Copy size={16} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
+            {contractPayments.length > 0 ? (
+              <div className="grid md:grid-cols-2 gap-6">
+                {contractPayments.map((pm, i) => (
+                  <div key={i} className="border border-gray-200 rounded-lg p-6">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-4">
+                      {pm.type === "pix" ? "💰 PIX" : "💳 Cartão de Crédito"}
+                    </h3>
+                    {pm.description && <p className="text-sm text-gray-500 mb-3">{pm.description}</p>}
+                    {pm.amount && <p className="text-lg font-bold text-gray-900 mb-4">R$ {Number(pm.amount).toLocaleString('pt-BR')}</p>}
 
-              {contract.mercadopago_link && (
-                <div className="border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-4">💳 Cartão de Crédito</h3>
-                  <p className="text-sm text-gray-500 mb-4">Pague com cartão pelo Mercado Pago</p>
-                  <a href={contract.mercadopago_link} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-blue-600 text-white font-medium text-sm hover:bg-blue-700">
-                    <ExternalLink size={16} /> Pagar com Cartão
-                  </a>
-                </div>
-              )}
-            </div>
+                    {pm.type === "pix" && (
+                      <div className="space-y-3">
+                        {pm.qr_code_url && (
+                          <div className="flex justify-center">
+                            <img src={pm.qr_code_url} alt="QR Code PIX" className="w-48 h-48 rounded-lg" />
+                          </div>
+                        )}
+                        {pm.pix_key && (
+                          <div className="flex items-center gap-2">
+                            <input value={pm.pix_key} readOnly className="flex-1 px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-900 text-sm" />
+                            <button onClick={() => { navigator.clipboard.writeText(pm.pix_key); toast.success("Chave copiada!"); }}
+                              className="px-3 py-2 rounded-lg bg-blue-600 text-white"><Copy size={16} /></button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {pm.type === "credit_card" && pm.payment_link && (
+                      <a href={pm.payment_link} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-blue-600 text-white font-medium text-sm hover:bg-blue-700">
+                        <ExternalLink size={16} /> Pagar com Cartão
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-8">Nenhuma forma de pagamento configurada.</p>
+            )}
           </div>
         )}
       </div>
@@ -665,59 +726,6 @@ const PublicPage = () => {
             <p className="text-xs text-gray-400 mt-3">
               Ao assinar, você concorda com os termos. Sua assinatura será registrada com data, hora e IP.
             </p>
-          </div>
-        </div>
-      )}
-
-      {/* Payment Selection Modal */}
-      {showPaymentSelect && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowPaymentSelect(false)}>
-          <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-gray-900">Escolha a forma de pagamento</h3>
-              <button onClick={() => setShowPaymentSelect(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
-            </div>
-
-            <div className="space-y-3 mb-4">
-              {paymentMethods.map((pm, i) => (
-                <button key={i} onClick={() => setSelectedPayment(pm)}
-                  className={`w-full text-left p-4 rounded-lg border transition-all ${selectedPayment?.id === pm.id ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:bg-gray-50"}`}>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-gray-900 capitalize">{pm.type}</span>
-                    {pm.amount && <span className="text-sm font-bold text-blue-600">R$ {Number(pm.amount).toLocaleString('pt-BR')}</span>}
-                  </div>
-                  {pm.description && <p className="text-xs text-gray-500 mt-1">{pm.description}</p>}
-                </button>
-              ))}
-            </div>
-
-            {selectedPayment && (
-              <div className="border border-gray-200 rounded-lg p-4 mb-4">
-                {(selectedPayment.type === "pix" || selectedPayment.type === "qrcode") && selectedPayment.qr_code_url && (
-                  <div className="text-center">
-                    <img src={selectedPayment.qr_code_url} alt="QR Code" className="w-48 h-48 mx-auto rounded-lg mb-2" />
-                    {selectedPayment.pix_key && (
-                      <div className="flex items-center gap-2 mt-2">
-                        <input value={selectedPayment.pix_key} readOnly className="flex-1 px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-sm" />
-                        <button onClick={() => { navigator.clipboard.writeText(selectedPayment.pix_key); toast.success("Chave copiada!"); }}
-                          className="px-3 py-2 rounded-lg bg-blue-600 text-white"><Copy size={14} /></button>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {(selectedPayment.type === "mercadopago" || selectedPayment.type === "cartao") && selectedPayment.payment_link && (
-                  <a href={selectedPayment.payment_link} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-blue-600 text-white font-medium text-sm hover:bg-blue-700">
-                    <ExternalLink size={16} /> Pagar
-                  </a>
-                )}
-              </div>
-            )}
-
-            <button onClick={handleApproveWithPayment}
-              className="w-full px-6 py-3 rounded-lg bg-green-600 text-white font-medium text-sm hover:bg-green-700">
-              ✅ Confirmar Aprovação
-            </button>
           </div>
         </div>
       )}

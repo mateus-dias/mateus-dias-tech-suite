@@ -22,9 +22,6 @@ const AdminProposals = () => {
   const [showAdjustments, setShowAdjustments] = useState<string | null>(null);
   const [adjustments, setAdjustments] = useState<any[]>([]);
 
-  // Payment methods for the proposal
-  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
-
   const defaultForm = {
     lead_id: "",
     title: "",
@@ -63,14 +60,6 @@ const AdminProposals = () => {
     setAdjustments(data || []);
   };
 
-  const fetchPaymentMethods = async (proposalId: string) => {
-    const { data } = await supabase.from("proposal_payments")
-      .select("*")
-      .eq("proposal_id", proposalId)
-      .order("created_at");
-    setPaymentMethods(data || []);
-  };
-
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const { data: { user } } = await supabase.auth.getUser();
@@ -95,36 +84,15 @@ const AdminProposals = () => {
       user_id: user.id,
     };
 
-    let proposalId = editing?.id;
-
     if (editing) {
       await supabase.from("proposals").update(payload).eq("id", editing.id);
     } else {
-      const { data } = await supabase.from("proposals").insert(payload).select().single();
-      if (data) proposalId = data.id;
-    }
-
-    // Save payment methods
-    if (proposalId) {
-      await supabase.from("proposal_payments").delete().eq("proposal_id", proposalId);
-      if (paymentMethods.length > 0) {
-        const methods = paymentMethods.map(m => ({
-          proposal_id: proposalId,
-          type: m.type,
-          description: m.description || null,
-          amount: m.amount ? parseFloat(m.amount) : null,
-          pix_key: m.pix_key || null,
-          qr_code_url: m.qr_code_url || null,
-          payment_link: m.payment_link || null,
-        }));
-        await supabase.from("proposal_payments").insert(methods);
-      }
+      await supabase.from("proposals").insert(payload);
     }
 
     setShowForm(false);
     setEditing(null);
     setForm(defaultForm);
-    setPaymentMethods([]);
     fetchData();
     toast.success(editing ? "Proposta atualizada!" : "Proposta criada!");
   };
@@ -165,7 +133,6 @@ const AdminProposals = () => {
       validity_days: p.validity_days?.toString() || "15",
       guarantee: p.guarantee || "",
     });
-    await fetchPaymentMethods(p.id);
     setShowForm(true);
   };
 
@@ -190,20 +157,6 @@ const AdminProposals = () => {
     setForm({ ...form, [type]: form[type].filter((_, i) => i !== index) });
   };
 
-  const addPaymentMethod = () => {
-    setPaymentMethods([...paymentMethods, { type: "pix", description: "", amount: "", pix_key: "", qr_code_url: "", payment_link: "" }]);
-  };
-
-  const updatePaymentMethod = (index: number, field: string, value: string) => {
-    const arr = [...paymentMethods];
-    arr[index] = { ...arr[index], [field]: value };
-    setPaymentMethods(arr);
-  };
-
-  const removePaymentMethod = (index: number) => {
-    setPaymentMethods(paymentMethods.filter((_, i) => i !== index));
-  };
-
   return (
     <div className="p-6 lg:p-8">
       <div className="flex items-center justify-between mb-6">
@@ -217,7 +170,7 @@ const AdminProposals = () => {
             <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar..."
               className="pl-9 pr-4 py-2 rounded-xl bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 w-48" />
           </div>
-          <button onClick={() => { setShowForm(true); setEditing(null); setForm(defaultForm); setPaymentMethods([]); }}
+          <button onClick={() => { setShowForm(true); setEditing(null); setForm(defaultForm); }}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90">
             <Plus size={16} /> Nova Proposta
           </button>
@@ -397,48 +350,18 @@ const AdminProposals = () => {
                   <label className="text-xs text-muted-foreground mb-1 block">Validade (dias)</label>
                   <input type="number" value={form.validity_days} onChange={e => setForm({...form, validity_days: e.target.value})} className={inputClass} />
                 </div>
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Pagamento</label>
-                  <input value={form.payment_terms} onChange={e => setForm({...form, payment_terms: e.target.value})} className={inputClass} placeholder="Ex: 50% entrada" />
-                </div>
               </div>
 
-              {/* Payment Methods */}
-              <div className="border border-border rounded-xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-foreground">Formas de Pagamento</h3>
-                  <button type="button" onClick={addPaymentMethod} className="text-xs text-primary hover:underline">+ Adicionar forma</button>
-                </div>
-                {paymentMethods.map((pm, i) => (
-                  <div key={i} className="glass rounded-xl p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <select value={pm.type} onChange={e => updatePaymentMethod(i, "type", e.target.value)} className={inputClass + " w-auto"}>
-                        <option value="pix">PIX</option>
-                        <option value="qrcode">QR Code</option>
-                        <option value="mercadopago">Link Mercado Pago</option>
-                        <option value="cartao">Cartão</option>
-                        <option value="transferencia">Transferência</option>
-                      </select>
-                      <button type="button" onClick={() => removePaymentMethod(i)} className="text-muted-foreground hover:text-destructive"><X size={16} /></button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <input value={pm.description || ""} onChange={e => updatePaymentMethod(i, "description", e.target.value)} className={inputClass} placeholder="Descrição" />
-                      <input type="number" value={pm.amount || ""} onChange={e => updatePaymentMethod(i, "amount", e.target.value)} className={inputClass} placeholder="Valor R$" />
-                    </div>
-                    {(pm.type === "pix" || pm.type === "qrcode") && (
-                      <div className="grid grid-cols-2 gap-2">
-                        <input value={pm.pix_key || ""} onChange={e => updatePaymentMethod(i, "pix_key", e.target.value)} className={inputClass} placeholder="Chave PIX" />
-                        <input value={pm.qr_code_url || ""} onChange={e => updatePaymentMethod(i, "qr_code_url", e.target.value)} className={inputClass} placeholder="URL QR Code" />
-                      </div>
-                    )}
-                    {(pm.type === "mercadopago" || pm.type === "cartao") && (
-                      <input value={pm.payment_link || ""} onChange={e => updatePaymentMethod(i, "payment_link", e.target.value)} className={inputClass} placeholder="Link de pagamento" />
-                    )}
-                  </div>
-                ))}
-                {paymentMethods.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-2">Nenhuma forma de pagamento adicionada</p>
-                )}
+              {/* Payment Terms - text area only */}
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Formas de Pagamento</label>
+                <textarea
+                  rows={4}
+                  value={form.payment_terms}
+                  onChange={e => setForm({...form, payment_terms: e.target.value})}
+                  className={inputClass + " resize-none"}
+                  placeholder={"• 50% no início e 50% na entrega\n• Pagamento via PIX ou Cartão de Crédito\n• Parcelamento em até 3x no cartão"}
+                />
               </div>
 
               <div className="flex gap-3 justify-end">
