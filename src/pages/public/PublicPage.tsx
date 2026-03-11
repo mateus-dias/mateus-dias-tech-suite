@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/Logo.png";
 import { CheckCircle, FileText, CreditCard, Pen, Copy, ExternalLink, Download, X } from "lucide-react";
 import { toast } from "sonner";
-import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
 const CLAUSULAS = [
@@ -204,34 +203,24 @@ const PublicPage = () => {
   const downloadPDF = async (ref: React.RefObject<HTMLDivElement>, filename: string) => {
   if (!ref.current) return;
 
-  const canvas = await html2canvas(ref.current, {
-    scale: 2,
-    backgroundColor: "#ffffff",
-    useCORS: true
+  const pdf = new jsPDF({
+    orientation: "p",
+    unit: "mm",
+    format: "a4",
   });
 
-  const imgData = canvas.toDataURL("image/png");
-  const pdf = new jsPDF("p", "mm", "a4");
-  const imgWidth = 210;
-  const pageHeight = 297;
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-  let heightLeft = imgHeight;
-  let position = 0;
-
-  pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-
-  heightLeft -= pageHeight;
-
-  while (heightLeft > 0) {
-    position = heightLeft - imgHeight;
-    pdf.addPage();
-    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-
-    heightLeft -= pageHeight;
-  }
-
-  pdf.save(filename);
+  await pdf.html(ref.current, {
+    margin: [12, 12, 12, 12],
+    autoPaging: "text",
+    html2canvas: {
+      scale: 0.8,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+    },
+    callback: (doc) => {
+      doc.save(filename);
+    },
+  });
 };
 
   if (loading) {
