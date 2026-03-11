@@ -179,26 +179,3 @@
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--primary) / 0.5);
 }
-
-/* ===== PDF PAGE BREAK CONTROL ===== */
-
-.pdf-container section,
-.pdf-container .grid,
-.pdf-container .border,
-.pdf-container .rounded-lg {
-  break-inside: avoid;
-  page-break-inside: avoid;
-}
-
-.pdf-container h1,
-.pdf-container h2,
-.pdf-container h3,
-.pdf-container h4 {
-  break-after: avoid;
-  page-break-after: avoid;
-}
-
-.pdf-container img {
-  max-width: 100%;
-  height: auto;
-}
