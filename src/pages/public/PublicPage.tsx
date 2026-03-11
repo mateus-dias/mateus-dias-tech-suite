@@ -7,6 +7,27 @@ import { toast } from "sonner";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
+const CLAUSULAS = [
+  { title: "CLÁUSULA 1 – OBJETO DO CONTRATO", text: "O presente contrato tem por objeto a prestação de serviços de desenvolvimento de sistema/software conforme descrito no escopo do projeto e na proposta comercial aprovada." },
+  { title: "CLÁUSULA 2 – ESCOPO DO PROJETO", text: "O escopo do projeto compreende exclusivamente as funcionalidades descritas na proposta aprovada. Qualquer funcionalidade adicional será considerada fora do escopo e poderá ser objeto de orçamento complementar." },
+  { title: "CLÁUSULA 3 – ITENS FORA DO ESCOPO", text: "Itens não descritos no escopo do projeto não fazem parte da entrega inicial, incluindo, mas não se limitando a integrações externas, customizações adicionais, novas funcionalidades ou alterações estruturais no sistema." },
+  { title: "CLÁUSULA 4 – PRAZO DE EXECUÇÃO", text: "O prazo estimado para execução do projeto é aquele definido neste contrato, podendo sofrer ajustes em caso de alterações de escopo, atrasos na entrega de materiais pelo contratante ou fatores externos." },
+  { title: "CLÁUSULA 5 – RESPONSABILIDADES DO CONTRATANTE", text: "O contratante compromete-se a fornecer todas as informações, conteúdos, acessos e materiais necessários para a execução do projeto dentro dos prazos solicitados." },
+  { title: "CLÁUSULA 6 – FORMAS DE PAGAMENTO", text: "As condições de pagamento seguem as regras estabelecidas neste contrato e devem ser cumpridas conforme acordado entre as partes." },
+  { title: "CLÁUSULA 7 – INADIMPLÊNCIA", text: "Em caso de atraso superior a 5 dias corridos no pagamento, a contratada poderá suspender temporariamente a execução do projeto até a regularização financeira." },
+  { title: "CLÁUSULA 8 – ALTERAÇÕES DE ESCOPO", text: "Alterações solicitadas após aprovação da proposta poderão gerar novo orçamento e ajuste no prazo de entrega." },
+  { title: "CLÁUSULA 9 – GARANTIA", text: "A contratada oferece garantia de 30 dias para correção de eventuais erros técnicos relacionados exclusivamente ao escopo entregue." },
+  { title: "CLÁUSULA 10 – PROPRIEDADE INTELECTUAL", text: "Após a quitação integral do projeto, o contratante terá direito de uso do sistema desenvolvido conforme acordado. A propriedade intelectual das tecnologias utilizadas permanece com a contratada." },
+  { title: "CLÁUSULA 11 – HOSPEDAGEM E SERVIÇOS DE TERCEIROS", text: "Caso o sistema utilize serviços de terceiros como hospedagem, APIs ou plataformas externas, eventuais indisponibilidades desses serviços não serão de responsabilidade da contratada." },
+  { title: "CLÁUSULA 12 – CONFIDENCIALIDADE", text: "Ambas as partes comprometem-se a manter sigilo sobre informações confidenciais obtidas durante a execução do projeto." },
+  { title: "CLÁUSULA 13 – ACEITE DO PROJETO", text: "Após a entrega do projeto, o contratante terá prazo de 5 dias úteis para validação. Na ausência de manifestação dentro desse prazo, o projeto será considerado aceito." },
+  { title: "CLÁUSULA 14 – RESCISÃO", text: "O contrato poderá ser rescindido por qualquer das partes mediante comunicação prévia de 10 dias." },
+  { title: "CLÁUSULA 15 – CANCELAMENTO E VALORES PAGOS", text: "Em caso de cancelamento após o início do projeto, os valores já pagos não serão devolvidos, considerando os serviços já executados." },
+  { title: "CLÁUSULA 16 – MULTA CONTRATUAL", text: "Caso o contratante solicite cancelamento após o início do projeto, poderá ser aplicada multa compensatória de 30% sobre o valor restante do contrato." },
+  { title: "CLÁUSULA 17 – CHARGEBACK", text: "Em caso de contestação de pagamento após o início da execução do projeto, a contratada poderá adotar medidas administrativas e jurídicas para cobrança do valor devido." },
+  { title: "CLÁUSULA 18 – FORO", text: "Fica eleito o foro da comarca de Jaboticabal/SP para dirimir quaisquer dúvidas ou conflitos oriundos deste contrato." },
+];
+
 const PublicPage = () => {
   const { token } = useParams<{ token: string }>();
   const [proposal, setProposal] = useState<any>(null);
@@ -47,11 +68,9 @@ const PublicPage = () => {
     if (contracts && contracts.length > 0) {
       setContract(contracts[0]);
       setActiveTab("contract");
-      // Fetch contract payment methods
       const { data: cpm } = await supabase.from("contract_payments")
         .select("*").eq("contract_id", contracts[0].id);
       setContractPayments(cpm || []);
-      // Fetch signatures
       const { data: sigs } = await supabase.from("contract_signatures")
         .select("*").eq("contract_id", contracts[0].id);
       setSignatures(sigs || []);
@@ -76,8 +95,9 @@ const PublicPage = () => {
     const ctx = canvasRef.current?.getContext("2d");
     if (ctx) {
       const rect = canvasRef.current!.getBoundingClientRect();
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.5;
       ctx.lineCap = "round";
+      ctx.lineJoin = "round";
       ctx.strokeStyle = "#1a1a2e";
       ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
       ctx.stroke();
@@ -94,16 +114,30 @@ const PublicPage = () => {
   };
 
   const generateAutoSignature = (): string => {
+    const name = signerName || "Assinatura";
     const canvas = document.createElement("canvas");
-    canvas.width = 400;
-    canvas.height = 150;
+    canvas.width = 600;
+    canvas.height = 200;
     const ctx = canvas.getContext("2d")!;
     ctx.fillStyle = "white";
-    ctx.fillRect(0, 0, 400, 150);
-    ctx.font = "italic 42px 'Georgia', serif";
+    ctx.fillRect(0, 0, 600, 200);
+
+    // Use Dancing Script or fallback
+    let fontSize = 52;
+    ctx.font = `${fontSize}px 'Dancing Script', 'Great Vibes', cursive`;
+    // Measure and shrink if needed
+    let measured = ctx.measureText(name);
+    while (measured.width > 560 && fontSize > 24) {
+      fontSize -= 2;
+      ctx.font = `${fontSize}px 'Dancing Script', 'Great Vibes', cursive`;
+      measured = ctx.measureText(name);
+    }
+
     ctx.fillStyle = "#1a1a2e";
     ctx.textAlign = "center";
-    ctx.fillText(signerName || "Assinatura", 200, 90);
+    ctx.textBaseline = "middle";
+    ctx.fillText(name, 300, 100);
+
     return canvas.toDataURL();
   };
 
@@ -127,7 +161,6 @@ const PublicPage = () => {
       signatureData = canvasRef.current.toDataURL();
     }
 
-    // Save to contract_signatures
     await supabase.from("contract_signatures").insert({
       contract_id: contract.id,
       signer_name: signerName,
@@ -135,7 +168,6 @@ const PublicPage = () => {
       signature_image: signatureData,
     } as any);
 
-    // Update contract
     await supabase.from("contracts").update({
       client_signature_data: signatureData,
       client_signature_date: new Date().toISOString(),
@@ -176,7 +208,23 @@ const PublicPage = () => {
     const pdf = new jsPDF("p", "mm", "a4");
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+    
+    // Handle multi-page
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    if (pdfHeight <= pageHeight) {
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+    } else {
+      let remainingHeight = pdfHeight;
+      let position = 0;
+      let page = 0;
+      while (remainingHeight > 0) {
+        if (page > 0) pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, -position, pdfWidth, pdfHeight);
+        remainingHeight -= pageHeight;
+        position += pageHeight;
+        page++;
+      }
+    }
     pdf.save(filename);
   };
 
@@ -198,6 +246,219 @@ const PublicPage = () => {
       </div>
     );
   }
+
+  const renderContractDocument = () => {
+    if (!contract) return null;
+    const createdDate = new Date(contract.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    return (
+      <div ref={contractRef} className="bg-white rounded-lg shadow-sm border border-gray-200" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
+        {/* Header */}
+        <div className="border-b-2 border-gray-800 px-10 py-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <img src={logo} alt="Logo" className="w-14 h-14" />
+              <div>
+                <h1 className="text-xl font-bold text-gray-900 tracking-wide uppercase">Mateus Dias Tech</h1>
+                <p className="text-xs text-gray-500 tracking-wider uppercase">Desenvolvimento de Sites e Sistemas Web</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-gray-500">Data de emissão</p>
+              <p className="text-sm text-gray-900 font-medium">{createdDate}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Title */}
+        <div className="px-10 py-6 border-b border-gray-200 text-center">
+          <h2 className="text-2xl font-bold text-gray-900 uppercase tracking-wider">
+            Contrato de Prestação de Serviços
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">{contract.title}</p>
+        </div>
+
+        <div className="px-10 py-8 space-y-8" style={{ fontSize: '14px', lineHeight: '1.8', color: '#374151' }}>
+          {/* Parties */}
+          <section>
+            <h3 className="text-base font-bold text-gray-900 uppercase tracking-wide mb-4 pb-2 border-b border-gray-300">
+              Identificação das Partes
+            </h3>
+            <div className="space-y-4">
+              <div className="bg-gray-50 rounded-lg p-5 border border-gray-100">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Contratante</p>
+                <p className="font-semibold text-gray-900 text-base">{contract.client_name || "—"}</p>
+                {contract.client_document && <p className="text-sm text-gray-600 mt-1">CPF/CNPJ: {contract.client_document}</p>}
+                {contract.client_address && <p className="text-sm text-gray-600">Endereço: {contract.client_address}</p>}
+              </div>
+              <div className="bg-gray-50 rounded-lg p-5 border border-gray-100">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Contratada</p>
+                <p className="font-semibold text-gray-900 text-base">Mateus Dias</p>
+                <p className="text-sm text-gray-600 mt-1">Engenheiro da Computação</p>
+                <p className="text-sm text-gray-600">Desenvolvimento de Sites e Sistemas Web</p>
+              </div>
+            </div>
+          </section>
+
+          {/* Object */}
+          <section>
+            <h3 className="text-base font-bold text-gray-900 uppercase tracking-wide mb-3 pb-2 border-b border-gray-300">
+              Objeto do Contrato
+            </h3>
+            <p>
+              O presente contrato tem por objeto a prestação de serviços de desenvolvimento de sistema/software conforme
+              escopo descrito abaixo e na proposta comercial aprovada, que integra este contrato como referência técnica e comercial.
+            </p>
+          </section>
+
+          {/* Scope */}
+          {contract.scope && (
+            <section>
+              <h3 className="text-base font-bold text-gray-900 uppercase tracking-wide mb-3 pb-2 border-b border-gray-300">
+                Escopo do Projeto
+              </h3>
+              <div className="whitespace-pre-line">{contract.scope}</div>
+            </section>
+          )}
+
+          {/* Proposal reference */}
+          <section className="bg-blue-50 border border-blue-100 rounded-lg p-5">
+            <p className="text-sm text-blue-800 italic">
+              <strong>Nota:</strong> A proposta comercial aprovada integra este contrato como referência técnica e comercial,
+              detalhando o escopo funcional completo, tecnologias utilizadas, objetivos do projeto e demais especificações técnicas.
+            </p>
+          </section>
+
+          {/* Deadline */}
+          {contract.deadline && (
+            <section>
+              <h3 className="text-base font-bold text-gray-900 uppercase tracking-wide mb-3 pb-2 border-b border-gray-300">
+                Prazo de Execução
+              </h3>
+              <p>O prazo estimado para execução do projeto é de <strong>{contract.deadline}</strong>, contados a partir da assinatura deste contrato e do recebimento do pagamento inicial acordado.</p>
+            </section>
+          )}
+
+          {/* Value */}
+          {contract.value && (
+            <section>
+              <h3 className="text-base font-bold text-gray-900 uppercase tracking-wide mb-3 pb-2 border-b border-gray-300">
+                Valor do Projeto
+              </h3>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-5 text-center">
+                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Valor Total do Investimento</p>
+                <p className="text-3xl font-bold text-gray-900">R$ {Number(contract.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+              </div>
+            </section>
+          )}
+
+          {/* Payment Terms */}
+          {contract.payment_terms && (
+            <section>
+              <h3 className="text-base font-bold text-gray-900 uppercase tracking-wide mb-3 pb-2 border-b border-gray-300">
+                Condições de Pagamento
+              </h3>
+              <div className="whitespace-pre-line">{contract.payment_terms}</div>
+            </section>
+          )}
+
+          {/* Guarantee */}
+          <section>
+            <h3 className="text-base font-bold text-gray-900 uppercase tracking-wide mb-3 pb-2 border-b border-gray-300">
+              Garantia
+            </h3>
+            <p>A contratada oferece garantia de 30 (trinta) dias corridos após a entrega final do projeto para correção de eventuais erros técnicos relacionados exclusivamente ao escopo contratado.</p>
+          </section>
+
+          {/* Legal Clauses */}
+          <section>
+            <h3 className="text-lg font-bold text-gray-900 uppercase tracking-wide mb-6 pb-2 border-b-2 border-gray-800 text-center">
+              Cláusulas Contratuais
+            </h3>
+            <div className="space-y-5">
+              {CLAUSULAS.map((c, i) => (
+                <div key={i}>
+                  <h4 className="font-bold text-gray-900 text-sm uppercase tracking-wide mb-1">{c.title}</h4>
+                  <p className="text-sm" style={{ lineHeight: '1.8' }}>{c.text}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Signatures */}
+          <section className="border-t-2 border-gray-800 pt-8 mt-10">
+            <h3 className="text-base font-bold text-gray-900 uppercase tracking-wide mb-6 text-center">
+              Assinaturas
+            </h3>
+            <p className="text-sm text-gray-500 text-center mb-8">
+              As partes declaram que leram e concordam com todos os termos e condições deste contrato.
+            </p>
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* Contratada */}
+              <div className="border border-gray-200 rounded-lg p-6 text-center">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Contratada</p>
+                <div className="min-h-[100px] flex items-center justify-center">
+                  {contract.admin_signature_data ? (
+                    <div>
+                      {contract.admin_signature_data.startsWith("data:image") ? (
+                        <img src={contract.admin_signature_data} alt="Assinatura Admin" className="max-h-24 mx-auto object-contain" />
+                      ) : (
+                        <p className="text-2xl text-gray-800" style={{ fontFamily: "'Dancing Script', 'Great Vibes', cursive" }}>
+                          {contract.admin_signature_data.replace("Assinado digitalmente por ", "")}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400 italic">Assinatura pendente</p>
+                  )}
+                </div>
+                <div className="border-t border-gray-200 pt-3 mt-4">
+                  <p className="text-sm font-medium text-gray-900">Mateus Dias</p>
+                  <p className="text-xs text-gray-500">Engenheiro da Computação</p>
+                  {contract.admin_signature_date && (
+                    <p className="text-xs text-gray-400 mt-1">{new Date(contract.admin_signature_date).toLocaleString('pt-BR')}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Contratante */}
+              <div className="border border-gray-200 rounded-lg p-6 text-center">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Contratante</p>
+                <div className="min-h-[100px] flex items-center justify-center overflow-visible">
+                  {contract.client_signature_data ? (
+                    <div className="w-full overflow-visible">
+                      <img
+                        src={contract.client_signature_data}
+                        alt="Assinatura Cliente"
+                        className="max-h-24 mx-auto"
+                        style={{ objectFit: 'contain', maxWidth: '100%' }}
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400 italic">Assinatura pendente</p>
+                  )}
+                </div>
+                <div className="border-t border-gray-200 pt-3 mt-4">
+                  <p className="text-sm font-medium text-gray-900">{contract.client_name || "—"}</p>
+                  {contract.client_document && <p className="text-xs text-gray-500">CPF/CNPJ: {contract.client_document}</p>}
+                  {contract.client_signature_date && (
+                    <p className="text-xs text-gray-400 mt-1">{new Date(contract.client_signature_date).toLocaleString('pt-BR')}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Footer */}
+          <div className="border-t border-gray-200 pt-6 text-center space-y-1">
+            <p className="text-xs text-gray-400">Contrato gerado digitalmente em {createdDate}</p>
+            <p className="text-xs text-gray-400">Este documento tem validade jurídica conforme Lei nº 14.063/2020</p>
+            <p className="text-xs text-gray-400">© {new Date().getFullYear()} Mateus Dias Tech. Todos os direitos reservados.</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -335,7 +596,6 @@ const PublicPage = () => {
                   </section>
                 )}
 
-                {/* Investment */}
                 <section>
                   <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">Investimento</h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -360,7 +620,6 @@ const PublicPage = () => {
                   </div>
                 </section>
 
-                {/* Payment Terms - text only */}
                 {proposal.payment_terms && (
                   <section>
                     <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">Formas de Pagamento</h3>
@@ -431,115 +690,13 @@ const PublicPage = () => {
         {/* Contract Tab */}
         {activeTab === "contract" && contract && (
           <div>
-            <div ref={contractRef} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-gray-800 to-gray-900 px-8 py-6 text-white">
-                <div className="flex items-center gap-4 mb-4">
-                  <img src={logo} alt="Logo" className="w-10 h-10 rounded" />
-                  <div>
-                    <p className="text-sm font-medium opacity-90">Mateus Dias Tech</p>
-                    <p className="text-xs opacity-75">Contrato de Prestação de Serviços</p>
-                  </div>
-                </div>
-                <h2 className="text-2xl font-bold">{contract.title}</h2>
-              </div>
-
-              <div className="px-8 py-6 space-y-6">
-                {/* Parties */}
-                <section>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">Partes</h3>
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-xs text-gray-500 font-medium mb-1">CONTRATANTE</p>
-                      <p className="text-sm font-semibold text-gray-900">{contract.client_name || "—"}</p>
-                      {contract.client_document && <p className="text-xs text-gray-500 mt-1">CPF/CNPJ: {contract.client_document}</p>}
-                      {contract.client_address && <p className="text-xs text-gray-500">Endereço: {contract.client_address}</p>}
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-xs text-gray-500 font-medium mb-1">CONTRATADA</p>
-                      <p className="text-sm font-semibold text-gray-900">Mateus Dias</p>
-                      <p className="text-xs text-gray-500 mt-1">Engenheiro da Computação</p>
-                    </div>
-                  </div>
-                </section>
-
-                {/* Scope */}
-                {contract.scope && (
-                  <section>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">Escopo do Projeto</h3>
-                    <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">{contract.scope}</p>
-                  </section>
-                )}
-
-                {/* Terms */}
-                <section>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3 pb-2 border-b border-gray-200">Termos</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {contract.value && (
-                      <div className="bg-blue-50 rounded-lg p-4 text-center">
-                        <p className="text-xs text-gray-500">Valor</p>
-                        <p className="text-xl font-bold text-blue-600">R$ {Number(contract.value).toLocaleString('pt-BR')}</p>
-                      </div>
-                    )}
-                    {contract.deadline && (
-                      <div className="bg-gray-50 rounded-lg p-4 text-center">
-                        <p className="text-xs text-gray-500">Prazo</p>
-                        <p className="text-lg font-bold text-gray-900">{contract.deadline}</p>
-                      </div>
-                    )}
-                    {contract.payment_terms && (
-                      <div className="bg-gray-50 rounded-lg p-4 text-center">
-                        <p className="text-xs text-gray-500">Pagamento</p>
-                        <p className="text-sm font-medium text-gray-900">{contract.payment_terms}</p>
-                      </div>
-                    )}
-                  </div>
-                </section>
-
-                {/* Signatures */}
-                <section className="border-t border-gray-200 pt-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Assinaturas</h3>
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      <p className="text-xs text-gray-500 font-medium mb-2">CONTRATADA</p>
-                      {contract.admin_signature_data ? (
-                        <div>
-                          {contract.admin_signature_data.startsWith("data:image") ? (
-                            <img src={contract.admin_signature_data} alt="Assinatura Admin" className="h-16 object-contain" />
-                          ) : (
-                            <p className="text-sm text-green-600 font-medium">✓ {contract.admin_signature_data}</p>
-                          )}
-                          <p className="text-xs text-gray-400 mt-2">{new Date(contract.admin_signature_date!).toLocaleString('pt-BR')}</p>
-                        </div>
-                      ) : (
-                        <p className="text-xs text-gray-400">Pendente</p>
-                      )}
-                    </div>
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      <p className="text-xs text-gray-500 font-medium mb-2">CONTRATANTE</p>
-                      {contract.client_signature_data ? (
-                        <div>
-                          <img src={contract.client_signature_data} alt="Assinatura Cliente" className="h-16 object-contain" />
-                          <p className="text-xs text-gray-400 mt-2">{new Date(contract.client_signature_date!).toLocaleString('pt-BR')}</p>
-                        </div>
-                      ) : (
-                        <p className="text-xs text-gray-400">Pendente</p>
-                      )}
-                    </div>
-                  </div>
-                </section>
-
-                <div className="border-t border-gray-200 pt-6 text-center">
-                  <p className="text-xs text-gray-400">Contrato gerado em {new Date(contract.created_at).toLocaleString('pt-BR')}</p>
-                  <p className="text-xs text-gray-400">© {new Date().getFullYear()} Mateus Dias Tech</p>
-                </div>
-              </div>
-            </div>
+            {renderContractDocument()}
 
             {/* Contract Actions - outside PDF area */}
             {!contract.client_signature_data && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6 print:hidden">
                 <h3 className="text-sm font-semibold text-gray-900 mb-4">Para concluir o contrato:</h3>
-                
+
                 {/* Step 1: Choose payment */}
                 {contractPayments.length > 0 && (
                   <div className="mb-6">
@@ -559,7 +716,6 @@ const PublicPage = () => {
                       ))}
                     </div>
 
-                    {/* Show payment details */}
                     {selectedPayment && (
                       <div className="mt-4 border border-gray-200 rounded-lg p-4">
                         {selectedPayment.type === "pix" && (
@@ -696,8 +852,17 @@ const PublicPage = () => {
             </div>
 
             {signatureMode === "auto" && signerName && (
-              <div className="border border-gray-200 rounded-lg p-6 mb-4 bg-gray-50 text-center">
-                <p className="text-3xl italic text-gray-800" style={{ fontFamily: "Georgia, serif" }}>{signerName}</p>
+              <div className="border border-gray-200 rounded-lg p-8 mb-4 bg-gray-50 text-center overflow-visible">
+                <p
+                  className="text-gray-800 break-words"
+                  style={{
+                    fontFamily: "'Dancing Script', 'Great Vibes', cursive",
+                    fontSize: signerName.length > 25 ? '28px' : signerName.length > 18 ? '34px' : '42px',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {signerName}
+                </p>
               </div>
             )}
 
@@ -724,7 +889,7 @@ const PublicPage = () => {
               </button>
             </div>
             <p className="text-xs text-gray-400 mt-3">
-              Ao assinar, você concorda com os termos. Sua assinatura será registrada com data, hora e IP.
+              Ao assinar, você concorda com todos os termos e cláusulas deste contrato. Sua assinatura será registrada com data, hora e IP.
             </p>
           </div>
         </div>
