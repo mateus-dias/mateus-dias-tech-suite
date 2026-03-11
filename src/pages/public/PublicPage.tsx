@@ -548,7 +548,7 @@ const PublicPage = () => {
             {proposal && (
               <button onClick={() => downloadPDF(proposalRef, `proposta-${proposal.title}.pdf`)}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700">
-                <Download size={14} /> Baixar Proposta PDF
+                <Download size={14} /> Baixar PDF
               </button>
             )}
             {contract && (
