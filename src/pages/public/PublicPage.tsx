@@ -552,7 +552,7 @@ const PublicPage = () => {
               </button>
             )}
             {contract && (
-              <button onClick={handleDownloadContractPdf}
+              <button onClick={() => downloadPDF(contractRef, `contrato-${contract.title}.pdf`)}>
                 className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700">
                 <Download size={14} /> Baixar Contrato PDF
               </button>
