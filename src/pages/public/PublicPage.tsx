@@ -6,9 +6,9 @@ import { CheckCircle, FileText, CreditCard, Pen, Copy, ExternalLink, Download, X
 import { toast } from "sonner";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { pdf } from "@react-pdf/renderer";
+/*import { pdf } from "@react-pdf/renderer";
 import ContractPdfDocument from "@/components/pdf/ContractPdfDocument";
-
+*/
 const CLAUSULAS = [
   { title: "CLÁUSULA 1 – OBJETO DO CONTRATO", text: "O presente contrato tem por objeto a prestação de serviços de desenvolvimento de sistema/software conforme descrito no escopo do projeto e na proposta comercial aprovada." },
   { title: "CLÁUSULA 2 – ESCOPO DO PROJETO", text: "O escopo do projeto compreende exclusivamente as funcionalidades descritas na proposta aprovada. Qualquer funcionalidade adicional será considerada fora do escopo e poderá ser objeto de orçamento complementar." },
