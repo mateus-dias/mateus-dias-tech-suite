@@ -202,31 +202,37 @@ const PublicPage = () => {
   };
 
   const downloadPDF = async (ref: React.RefObject<HTMLDivElement>, filename: string) => {
-    if (!ref.current) return;
-    const canvas = await html2canvas(ref.current, { scale: 2, backgroundColor: "#ffffff" });
-    const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF("p", "mm", "a4");
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-    
-    // Handle multi-page
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    if (pdfHeight <= pageHeight) {
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-    } else {
-      let remainingHeight = pdfHeight;
-      let position = 0;
-      let page = 0;
-      while (remainingHeight > 0) {
-        if (page > 0) pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, -position, pdfWidth, pdfHeight);
-        remainingHeight -= pageHeight;
-        position += pageHeight;
-        page++;
-      }
-    }
-    pdf.save(filename);
-  };
+  if (!ref.current) return;
+
+  const canvas = await html2canvas(ref.current, {
+    scale: 2,
+    backgroundColor: "#ffffff",
+    useCORS: true
+  });
+
+  const imgData = canvas.toDataURL("image/png");
+  const pdf = new jsPDF("p", "mm", "a4");
+  const imgWidth = 210;
+  const pageHeight = 297;
+  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+  let heightLeft = imgHeight;
+  let position = 0;
+
+  pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+
+  heightLeft -= pageHeight;
+
+  while (heightLeft > 0) {
+    position = heightLeft - imgHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+
+    heightLeft -= pageHeight;
+  }
+
+  pdf.save(filename);
+};
 
   if (loading) {
     return (
@@ -252,7 +258,7 @@ const PublicPage = () => {
     const createdDate = new Date(contract.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
 
     return (
-      <div ref={contractRef} className="bg-white rounded-lg shadow-sm border border-gray-200" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
+      <div ref={contractRef} className="bg-white rounded-lg shadow-sm border border-gray-200 pdf-container" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
         {/* Header */}
         <div className="border-b-2 border-gray-800 px-10 py-8">
           <div className="flex items-center justify-between">
