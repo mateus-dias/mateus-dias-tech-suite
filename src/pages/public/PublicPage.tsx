@@ -386,7 +386,7 @@ const PublicPage = () => {
           </section>
 
           {/* Signatures */}
-          <section className="border-t-2 border-gray-800 pt-8 mt-10">
+          <section className="border-t-2 border-gray-800 pt-8 mt-10" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
             <h3 className="text-base font-bold text-gray-900 uppercase tracking-wide mb-6 text-center">
               Assinaturas
             </h3>
@@ -397,14 +397,18 @@ const PublicPage = () => {
               {/* Contratada */}
               <div className="border border-gray-200 rounded-lg p-6 text-center">
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Contratada</p>
-                <div className="min-h-[100px] flex items-center justify-center">
+                <div className="min-h-[100px] flex items-center justify-center overflow-visible">
                   {contract.admin_signature_data ? (
-                    <div>
+                    <div className="w-full overflow-visible">
                       {contract.admin_signature_data.startsWith("data:image") ? (
                         <img src={contract.admin_signature_data} alt="Assinatura Admin" className="max-h-24 mx-auto object-contain" />
                       ) : (
-                        <p className="text-2xl text-gray-800" style={{ fontFamily: "'Dancing Script', 'Great Vibes', cursive" }}>
-                          {contract.admin_signature_data.replace("Assinado digitalmente por ", "")}
+                        <p className="text-gray-800" style={{
+                          fontFamily: "'Great Vibes', 'Dancing Script', cursive",
+                          fontSize: '36px',
+                          lineHeight: 1.4,
+                        }}>
+                          Mateus Dias
                         </p>
                       )}
                     </div>
