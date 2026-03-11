@@ -211,7 +211,6 @@ const PublicPage = () => {
     scrollY: -window.scrollY,
   });
 
-  const imgData = canvas.toDataURL("image/png");
   const pdf = new jsPDF("p", "mm", "a4");
 
   const pageWidth = pdf.internal.pageSize.getWidth();
@@ -221,20 +220,53 @@ const PublicPage = () => {
   const usableWidth = pageWidth - margin * 2;
   const usableHeight = pageHeight - margin * 2;
 
-  const imgWidth = usableWidth;
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+  // Altura da página em pixels, proporcional à largura útil do PDF
+  const pxPerMm = canvas.width / usableWidth;
+  const pageCanvasHeight = Math.floor(usableHeight * pxPerMm);
 
-  let heightLeft = imgHeight;
-  let position = margin;
+  let renderedHeight = 0;
+  let pageIndex = 0;
 
-  pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight);
-  heightLeft -= usableHeight;
+  while (renderedHeight < canvas.height) {
+    const sliceHeight = Math.min(pageCanvasHeight, canvas.height - renderedHeight);
 
-  while (heightLeft > 0) {
-    pdf.addPage();
-    position = margin - (imgHeight - heightLeft);
-    pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight);
-    heightLeft -= usableHeight;
+    // cria um canvas temporário para a página atual
+    const pageCanvas = document.createElement("canvas");
+    pageCanvas.width = canvas.width;
+    pageCanvas.height = sliceHeight;
+
+    const pageCtx = pageCanvas.getContext("2d");
+    if (!pageCtx) return;
+
+    // fundo branco
+    pageCtx.fillStyle = "#ffffff";
+    pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+
+    // recorta a parte correspondente da imagem original
+    pageCtx.drawImage(
+      canvas,
+      0,
+      renderedHeight,
+      canvas.width,
+      sliceHeight,
+      0,
+      0,
+      canvas.width,
+      sliceHeight
+    );
+
+    const imgData = pageCanvas.toDataURL("image/png");
+
+    const imgHeight = (sliceHeight * usableWidth) / canvas.width;
+
+    if (pageIndex > 0) {
+      pdf.addPage();
+    }
+
+    pdf.addImage(imgData, "PNG", margin, margin, usableWidth, imgHeight);
+
+    renderedHeight += sliceHeight;
+    pageIndex++;
   }
 
   pdf.save(filename);
