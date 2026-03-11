@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/Logo.png";
 import { CheckCircle, FileText, CreditCard, Pen, Copy, ExternalLink, Download, X } from "lucide-react";
 import { toast } from "sonner";
+import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
 const CLAUSULAS = [
@@ -201,27 +202,31 @@ const PublicPage = () => {
   };
 
   const downloadPDF = async (ref: React.RefObject<HTMLDivElement>, filename: string) => {
-  if (!ref.current) return;
-
-  const pdf = new jsPDF({
-    orientation: "p",
-    unit: "mm",
-    format: "a4",
-  });
-
-  await pdf.html(ref.current, {
-    margin: [12, 12, 12, 12],
-    autoPaging: "text",
-    html2canvas: {
-      scale: 0.8,
-      useCORS: true,
-      backgroundColor: "#ffffff",
-    },
-    callback: (doc) => {
-      doc.save(filename);
-    },
-  });
-};
+    if (!ref.current) return;
+    const canvas = await html2canvas(ref.current, { scale: 2, backgroundColor: "#ffffff" });
+    const imgData = canvas.toDataURL("image/png");
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    
+    // Handle multi-page
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    if (pdfHeight <= pageHeight) {
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+    } else {
+      let remainingHeight = pdfHeight;
+      let position = 0;
+      let page = 0;
+      while (remainingHeight > 0) {
+        if (page > 0) pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, -position, pdfWidth, pdfHeight);
+        remainingHeight -= pageHeight;
+        position += pageHeight;
+        page++;
+      }
+    }
+    pdf.save(filename);
+  };
 
   if (loading) {
     return (
