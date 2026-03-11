@@ -377,7 +377,7 @@ const PublicPage = () => {
             </h3>
             <div className="space-y-5">
               {CLAUSULAS.map((c, i) => (
-                <div key={i}>
+                <div key={i} style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                   <h4 className="font-bold text-gray-900 text-sm uppercase tracking-wide mb-1">{c.title}</h4>
                   <p className="text-sm" style={{ lineHeight: '1.8' }}>{c.text}</p>
                 </div>
