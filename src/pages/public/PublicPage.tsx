@@ -546,13 +546,13 @@ const PublicPage = () => {
           </div>
           <div className="flex gap-2 print:hidden">
             {proposal && (
-              <button onClick={handleDownloadContractPdf}
+              <button onClick={() => downloadPDF(proposalRef, `proposta-${proposal.title}.pdf`)}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700">
-                <Download size={14} /> Baixar PDF
+                <Download size={14} /> Baixar Proposta PDF
               </button>
             )}
             {contract && (
-              <button onClick={() => downloadPDF(contractRef, `contrato-${contract.title}.pdf`)}
+              <button onClick={handleDownloadContractPdf}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700">
                 <Download size={14} /> Baixar Contrato PDF
               </button>
