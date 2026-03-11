@@ -6,6 +6,8 @@ import { CheckCircle, FileText, CreditCard, Pen, Copy, ExternalLink, Download, X
 import { toast } from "sonner";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { pdf } from "@react-pdf/renderer";
+import ContractPdfDocument from "@/components/pdf/ContractPdfDocument";
 
 const CLAUSULAS = [
   { title: "CLÁUSULA 1 – OBJETO DO CONTRATO", text: "O presente contrato tem por objeto a prestação de serviços de desenvolvimento de sistema/software conforme descrito no escopo do projeto e na proposta comercial aprovada." },
@@ -272,6 +274,28 @@ const PublicPage = () => {
   pdf.save(filename);
 };
 
+  const handleDownloadContractPdf = async () => {
+  if (!contract) return;
+
+  const blob = await pdf(
+    <ContractPdfDocument
+      contract={contract}
+      proposal={proposal}
+      clientName={contract.client_name}
+      logoUrl={logo}
+      adminSignatureUrl={contract.admin_signature_data || null}
+      clientSignatureUrl={contract.client_signature_data || null}
+    />
+  ).toBlob();
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `contrato-${contract.title}.pdf`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -522,7 +546,7 @@ const PublicPage = () => {
           </div>
           <div className="flex gap-2 print:hidden">
             {proposal && (
-              <button onClick={() => downloadPDF(proposalRef, `proposta-${proposal.title}.pdf`)}
+              <button onClick={handleDownloadContractPdf}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700">
                 <Download size={14} /> Baixar PDF
               </button>
