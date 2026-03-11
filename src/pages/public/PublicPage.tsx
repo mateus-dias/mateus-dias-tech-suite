@@ -274,7 +274,7 @@ const PublicPage = () => {
   pdf.save(filename);
 };
 
-  const handleDownloadContractPdf = async () => {
+/*  const handleDownloadContractPdf = async () => {
   if (!contract) return;
 
   const blob = await pdf(
@@ -294,7 +294,7 @@ const PublicPage = () => {
   a.download = `contrato-${contract.title}.pdf`;
   a.click();
   URL.revokeObjectURL(url);
-};
+};  */
 
   if (loading) {
     return (
@@ -552,7 +552,7 @@ const PublicPage = () => {
               </button>
             )}
             {contract && (
-              <button onClick={() => downloadPDF(contractRef, `contrato-${contract.title}.pdf`)}>
+              <button onClick={() => downloadPDF(contractRef, `contrato-${contract.title}.pdf`)}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700">
                 <Download size={14} /> Baixar Contrato PDF
               </button>
