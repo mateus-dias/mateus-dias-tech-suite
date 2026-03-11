@@ -182,17 +182,23 @@
 
 /* ===== PDF PAGE BREAK CONTROL ===== */
 
+.pdf-container section,
+.pdf-container .grid,
+.pdf-container .border,
+.pdf-container .rounded-lg {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
 .pdf-container h1,
 .pdf-container h2,
 .pdf-container h3,
-.pdf-container table,
-.pdf-container .signature-section,
-.pdf-container .contract-value,
-.pdf-container .clause-block {
-  page-break-inside: avoid;
-  break-inside: avoid;
+.pdf-container h4 {
+  break-after: avoid;
+  page-break-after: avoid;
 }
 
-.pdf-container section {
-  page-break-inside: avoid;
+.pdf-container img {
+  max-width: 100%;
+  height: auto;
 }
