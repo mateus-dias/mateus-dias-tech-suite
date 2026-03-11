@@ -280,7 +280,7 @@ const PublicPage = () => {
 
         <div className="px-10 py-8 space-y-8" style={{ fontSize: '14px', lineHeight: '1.8', color: '#374151' }}>
           {/* Parties */}
-          <section>
+          <section style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
             <h3 className="text-base font-bold text-gray-900 uppercase tracking-wide mb-4 pb-2 border-b border-gray-300">
               Identificação das Partes
             </h3>
