@@ -341,7 +341,7 @@ const PublicPage = () => {
 
           {/* Value */}
           {contract.value && (
-            <section>
+            <section style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
               <h3 className="text-base font-bold text-gray-900 uppercase tracking-wide mb-3 pb-2 border-b border-gray-300">
                 Valor do Projeto
               </h3>
