@@ -137,7 +137,7 @@ const Contact = () => {
 
             <div className="glass-card rounded-2xl p-8">
               <h3 className="text-lg font-semibold text-foreground mb-3">Horário de atendimento</h3>
-              <p className="text-sm text-muted-foreground">Atendimento das 08h às 22h</p>
+              <p className="text-sm text-muted-foreground">Atendimento das 08h às 18h</p>
               <p className="text-sm text-muted-foreground mt-3">Resposta em até 24 horas.</p>
             </div>
           </motion.div>
