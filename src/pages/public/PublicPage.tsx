@@ -519,6 +519,9 @@ const PublicPage = () => {
                   Contratada
                 </p>
                 <p className="font-semibold text-gray-900 text-base">Mateus Dias</p>
+                <p className="text-sm text-gray-600 mt-1">CPF: 440.828.348-77</p>
+                <p className="text-sm text-gray-600">Endereço: Rua Dorival Borsari, 102 – Bairro Vila Saul Borsari</p>
+                <p className="text-sm text-gray-600">Jaboticabal/SP</p>
                 <p className="text-sm text-gray-600 mt-1">Engenheiro da Computação</p>
                 <p className="text-sm text-gray-600">Desenvolvimento de Sites e Sistemas Web</p>
               </div>
