@@ -307,74 +307,59 @@ const PublicPage = () => {
   };
 
   const handleApprove = async () => {
-    if (!proposal || approving) return;
+  if (!proposal || approving || !token) return;
 
-    try {
-      setApproving(true);
+  try {
+    setApproving(true);
 
-      const { error } = await supabase
-        .from("proposals")
-        .update({ status: "aprovada" })
-        .eq("id", proposal.id);
+    const { error } = await supabase.rpc("public_approve_proposal", {
+      p_token: token,
+    });
 
-      if (error) {
-        console.error("Erro ao aprovar proposta:", error);
-        toast.error("Não foi possível aprovar a proposta.");
-        return;
-      }
-
-      await fetchData();
-      toast.success("Proposta aprovada!");
-    } catch (error) {
-      console.error("Erro inesperado ao aprovar proposta:", error);
-      toast.error("Erro ao aprovar proposta.");
-    } finally {
-      setApproving(false);
+    if (error) {
+      console.error("Erro ao aprovar proposta:", error);
+      toast.error("Não foi possível aprovar a proposta.");
+      return;
     }
-  };
+
+    await fetchData();
+    toast.success("Proposta aprovada!");
+  } catch (error) {
+    console.error("Erro inesperado ao aprovar proposta:", error);
+    toast.error("Erro ao aprovar proposta.");
+  } finally {
+    setApproving(false);
+  }
+};
 
   const handleRequestChanges = async () => {
-    if (!proposal || !adjustMessage.trim() || requestingChanges) return;
+  if (!proposal || !adjustMessage.trim() || requestingChanges || !token) return;
 
-    try {
-      setRequestingChanges(true);
+  try {
+    setRequestingChanges(true);
 
-      const { error: insertError } = await supabase
-        .from("proposal_adjustments")
-        .insert({
-          proposal_id: proposal.id,
-          message: adjustMessage,
-          created_by: "client",
-        } as any);
+    const { error } = await supabase.rpc("public_request_proposal_changes", {
+      p_token: token,
+      p_message: adjustMessage.trim(),
+    });
 
-      if (insertError) {
-        console.error("Erro ao salvar ajuste:", insertError);
-        toast.error("Não foi possível enviar os ajustes.");
-        return;
-      }
-
-      const { error: updateError } = await supabase
-        .from("proposals")
-        .update({ status: "ajustes" })
-        .eq("id", proposal.id);
-
-      if (updateError) {
-        console.error("Erro ao atualizar status da proposta:", updateError);
-        toast.error("Os ajustes foram enviados, mas houve erro ao atualizar a proposta.");
-        return;
-      }
-
-      setShowAdjustForm(false);
-      setAdjustMessage("");
-      await fetchData();
-      toast.success("Ajustes solicitados!");
-    } catch (error) {
-      console.error("Erro inesperado ao solicitar ajustes:", error);
-      toast.error("Erro ao solicitar ajustes.");
-    } finally {
-      setRequestingChanges(false);
+    if (error) {
+      console.error("Erro ao solicitar ajustes:", error);
+      toast.error("Não foi possível enviar os ajustes.");
+      return;
     }
-  };
+
+    setShowAdjustForm(false);
+    setAdjustMessage("");
+    await fetchData();
+    toast.success("Ajustes solicitados!");
+  } catch (error) {
+    console.error("Erro inesperado ao solicitar ajustes:", error);
+    toast.error("Erro ao solicitar ajustes.");
+  } finally {
+    setRequestingChanges(false);
+  }
+};
 
   const downloadPDF = async (ref: React.RefObject<HTMLDivElement>, filename: string) => {
     if (!ref.current) return;
