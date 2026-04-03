@@ -40,7 +40,7 @@ const AdminContracts = () => {
 
   const defaultForm = {
     lead_id: "", proposal_id: "", title: "", scope: "", deadline: "", value: "",
-    payment_terms: "", client_name: "", client_document: "", client_address: "",
+    payment_terms: "", client_name: "", client_document: "", client_address: "", guarantee: "",
   };
   const [form, setForm] = useState(defaultForm);
 
