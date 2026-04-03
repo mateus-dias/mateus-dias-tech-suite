@@ -187,8 +187,8 @@ const PublicPage = () => {
     }
 
     return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
+      x: (e as React.MouseEvent<HTMLCanvasElement>).clientX - rect.left,
+      y: (e as React.MouseEvent<HTMLCanvasElement>).clientY - rect.top,
     };
   };
 
@@ -312,7 +312,7 @@ const PublicPage = () => {
   try {
     setApproving(true);
 
-    const { error } = await supabase.rpc("public_approve_proposal", {
+    const { error } = await supabase.rpc("public_approve_proposal" as any, {
       p_token: token,
     });
 
@@ -338,7 +338,7 @@ const PublicPage = () => {
   try {
     setRequestingChanges(true);
 
-    const { error } = await supabase.rpc("public_request_proposal_changes", {
+    const { error } = await supabase.rpc("public_request_proposal_changes" as any, {
       p_token: token,
       p_message: adjustMessage.trim(),
     });
@@ -600,10 +600,8 @@ const PublicPage = () => {
             <h3 className="text-base font-bold text-gray-900 uppercase tracking-wide mb-3 pb-2 border-b border-gray-300">
               Garantia
             </h3>
-            <p>
-              A contratada oferece garantia de 30 (trinta) dias corridos após a entrega final do
-              projeto para correção de eventuais erros técnicos relacionados exclusivamente ao escopo
-              contratado.
+            <p className="whitespace-pre-line break-words">
+              {(contract as any).guarantee || "A contratada oferece garantia de 30 (trinta) dias corridos após a entrega final do projeto para correção de eventuais erros técnicos relacionados exclusivamente ao escopo contratado."}
             </p>
           </section>
 

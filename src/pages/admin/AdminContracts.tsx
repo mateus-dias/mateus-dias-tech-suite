@@ -40,7 +40,7 @@ const AdminContracts = () => {
 
   const defaultForm = {
     lead_id: "", proposal_id: "", title: "", scope: "", deadline: "", value: "",
-    payment_terms: "", client_name: "", client_document: "", client_address: "",
+    payment_terms: "", client_name: "", client_document: "", client_address: "", guarantee: "",
   };
   const [form, setForm] = useState(defaultForm);
 
@@ -96,6 +96,7 @@ const AdminContracts = () => {
       client_name: form.client_name || null,
       client_document: form.client_document || null,
       client_address: form.client_address || null,
+      guarantee: form.guarantee || null,
       user_id: user.id,
     };
 
@@ -171,6 +172,7 @@ const AdminContracts = () => {
       client_name: c.client_name || "",
       client_document: c.client_document || "",
       client_address: c.client_address || "",
+      guarantee: (c as any).guarantee || "",
     });
     const pms = await fetchPayments(c.id);
     setPaymentMethods(pms);
@@ -190,6 +192,7 @@ const AdminContracts = () => {
       client_name: lead?.name || "",
       client_document: "",
       client_address: "",
+      guarantee: (p as any).guarantee || "Garantia de 30 (trinta) dias corridos após a entrega final do projeto para correção de eventuais erros técnicos relacionados exclusivamente ao escopo contratado.",
     });
     setEditing(null);
     setPaymentMethods([]);
@@ -374,6 +377,11 @@ const AdminContracts = () => {
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Escopo</label>
                 <textarea rows={4} value={form.scope} onChange={e => setForm({...form, scope: e.target.value})} className={inputClass + " resize-none"} />
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Garantia</label>
+                <textarea rows={3} value={form.guarantee} onChange={e => setForm({...form, guarantee: e.target.value})} className={inputClass + " resize-none"} placeholder="Ex: Garantia de 30 dias para correção de erros técnicos relacionados ao escopo entregue." />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

@@ -256,7 +256,7 @@ const ContractPdfDocument = ({
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Garantia</Text>
           <Text style={styles.paragraph}>
-            Garantia de 30 dias para correções técnicas relacionadas ao escopo entregue.
+            {(contract as any)?.guarantee || "Garantia de 30 dias para correções técnicas relacionadas ao escopo entregue."}
           </Text>
         </View>
 
