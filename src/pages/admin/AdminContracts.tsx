@@ -406,7 +406,7 @@ const AdminContracts = () => {
                       </select>
                       <button type="button" onClick={() => removePaymentMethod(i)} className="text-muted-foreground hover:text-destructive"><X size={16} /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <input value={pm.description} onChange={e => updatePaymentMethod(i, "description", e.target.value)} className={inputClass} placeholder="Descrição" />
                       <input type="number" value={pm.amount} onChange={e => updatePaymentMethod(i, "amount", e.target.value)} className={inputClass} placeholder="Valor R$" />
                     </div>
