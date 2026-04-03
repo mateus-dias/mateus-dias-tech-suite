@@ -376,7 +376,7 @@ const AdminContracts = () => {
                 <textarea rows={4} value={form.scope} onChange={e => setForm({...form, scope: e.target.value})} className={inputClass + " resize-none"} />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">Prazo</label>
                   <input value={form.deadline} onChange={e => setForm({...form, deadline: e.target.value})} className={inputClass} />
