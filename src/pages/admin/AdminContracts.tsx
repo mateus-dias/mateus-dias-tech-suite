@@ -356,7 +356,7 @@ const AdminContracts = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">Nome do Cliente</label>
                   <input value={form.client_name} onChange={e => setForm({...form, client_name: e.target.value})} className={inputClass} />
