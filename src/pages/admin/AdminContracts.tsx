@@ -192,6 +192,7 @@ const AdminContracts = () => {
       client_name: lead?.name || "",
       client_document: "",
       client_address: "",
+      guarantee: (p as any).guarantee || "Garantia de 30 (trinta) dias corridos após a entrega final do projeto para correção de eventuais erros técnicos relacionados exclusivamente ao escopo contratado.",
     });
     setEditing(null);
     setPaymentMethods([]);
