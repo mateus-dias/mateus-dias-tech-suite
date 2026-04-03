@@ -115,7 +115,7 @@ const AdminDashboard = () => {
         <p className="text-sm text-muted-foreground">Visão geral da sua plataforma</p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-8">
         {statCards.map((card, i) => {
           const Icon = card.icon;
           return (
