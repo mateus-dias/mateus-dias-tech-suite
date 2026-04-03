@@ -312,7 +312,7 @@ const PublicPage = () => {
   try {
     setApproving(true);
 
-    const { error } = await supabase.rpc("public_approve_proposal", {
+    const { error } = await supabase.rpc("public_approve_proposal" as any, {
       p_token: token,
     });
 
