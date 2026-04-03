@@ -126,7 +126,7 @@ const AdminPayments = () => {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
         <div className="glass-card rounded-xl p-4">
           <p className="text-xs text-muted-foreground">Total Recebido</p>
           <p className="text-xl font-bold text-neon-green">R$ {totalPago.toLocaleString('pt-BR')}</p>
