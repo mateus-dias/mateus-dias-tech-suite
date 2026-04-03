@@ -188,8 +188,8 @@ const AdminLeads = () => {
 
       {/* List View */}
       {view === "list" && (
-        <div className="glass-card rounded-xl overflow-hidden">
-          <table className="w-full">
+        <div className="glass-card rounded-xl overflow-x-auto">
+          <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left text-xs text-muted-foreground font-medium px-4 py-3">Nome</th>
