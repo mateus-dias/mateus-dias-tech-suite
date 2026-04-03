@@ -208,7 +208,7 @@ const AdminPayments = () => {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">Valor (R$) *</label>
                   <input type="number" required value={form.value} onChange={e => setForm({...form, value: e.target.value})} className={inputClass} />
