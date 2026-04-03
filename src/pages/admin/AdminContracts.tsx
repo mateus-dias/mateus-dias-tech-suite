@@ -379,6 +379,11 @@ const AdminContracts = () => {
                 <textarea rows={4} value={form.scope} onChange={e => setForm({...form, scope: e.target.value})} className={inputClass + " resize-none"} />
               </div>
 
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Garantia</label>
+                <textarea rows={3} value={form.guarantee} onChange={e => setForm({...form, guarantee: e.target.value})} className={inputClass + " resize-none"} placeholder="Ex: Garantia de 30 dias para correção de erros técnicos relacionados ao escopo entregue." />
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">Prazo</label>

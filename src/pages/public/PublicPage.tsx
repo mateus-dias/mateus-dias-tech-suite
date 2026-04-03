@@ -600,10 +600,8 @@ const PublicPage = () => {
             <h3 className="text-base font-bold text-gray-900 uppercase tracking-wide mb-3 pb-2 border-b border-gray-300">
               Garantia
             </h3>
-            <p>
-              A contratada oferece garantia de 30 (trinta) dias corridos após a entrega final do
-              projeto para correção de eventuais erros técnicos relacionados exclusivamente ao escopo
-              contratado.
+            <p className="whitespace-pre-line break-words">
+              {(contract as any).guarantee || "A contratada oferece garantia de 30 (trinta) dias corridos após a entrega final do projeto para correção de eventuais erros técnicos relacionados exclusivamente ao escopo contratado."}
             </p>
           </section>
 
