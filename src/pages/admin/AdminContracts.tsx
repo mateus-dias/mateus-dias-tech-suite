@@ -234,21 +234,21 @@ const AdminContracts = () => {
   };
 
   return (
-    <div className="p-6 lg:p-8">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Contratos</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Contratos</h1>
           <p className="text-sm text-muted-foreground">{contracts.length} contratos</p>
         </div>
-        <div className="flex gap-3">
-          <div className="relative">
+        <div className="flex flex-wrap gap-2 sm:gap-3">
+          <div className="relative flex-1 sm:flex-none">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar..."
-              className="pl-9 pr-4 py-2 rounded-xl bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 w-48" />
+              className="pl-9 pr-4 py-2 rounded-xl bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 w-full sm:w-48" />
           </div>
           <button onClick={() => { setShowForm(true); setEditing(null); setForm(defaultForm); setPaymentMethods([]); }}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90">
-            <Plus size={16} /> Novo Contrato
+            <Plus size={16} /> <span className="hidden sm:inline">Novo Contrato</span><span className="sm:hidden">Novo</span>
           </button>
         </div>
       </div>
