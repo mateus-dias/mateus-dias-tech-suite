@@ -172,6 +172,7 @@ const AdminContracts = () => {
       client_name: c.client_name || "",
       client_document: c.client_document || "",
       client_address: c.client_address || "",
+      guarantee: (c as any).guarantee || "",
     });
     const pms = await fetchPayments(c.id);
     setPaymentMethods(pms);
