@@ -130,7 +130,7 @@ const AdminDashboard = () => {
         })}
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <div className="glass-card rounded-xl p-6">
           <h3 className="text-sm font-semibold text-foreground mb-4">Funil de Vendas (últimos 6 meses)</h3>
           <ResponsiveContainer width="100%" height={250}>

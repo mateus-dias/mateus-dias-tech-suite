@@ -225,7 +225,7 @@ const AdminLeads = () => {
           <div className="glass-card rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h2 className="text-lg font-bold text-foreground mb-4">{editingLead ? "Editar Lead" : "Novo Lead"}</h2>
             <form onSubmit={handleSave} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">Nome *</label>
                   <input required value={form.name} onChange={e => setForm({...form, name: e.target.value})}
