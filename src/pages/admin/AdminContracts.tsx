@@ -335,8 +335,8 @@ const AdminContracts = () => {
 
       {/* Modal Form */}
       {showForm && (
-        <div className="fixed inset-0 z-50 bg-background/80 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
-          <div className="glass-card rounded-2xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 bg-background/80 flex items-start sm:items-center justify-center p-2 sm:p-4 overflow-y-auto" onClick={() => setShowForm(false)}>
+          <div className="glass-card rounded-2xl p-4 sm:p-6 w-full max-w-3xl my-4 max-h-[95vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-foreground">{editing ? "Editar Contrato" : "Novo Contrato"}</h2>
               <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
