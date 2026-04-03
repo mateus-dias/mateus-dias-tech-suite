@@ -337,7 +337,7 @@ const AdminProposals = () => {
                 <textarea rows={2} value={form.guarantee} onChange={e => setForm({...form, guarantee: e.target.value})} className={inputClass + " resize-none"} placeholder="Termos de garantia pós-entrega..." />
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">Prazo</label>
                   <input value={form.deadline} onChange={e => setForm({...form, deadline: e.target.value})} className={inputClass} placeholder="Ex: 30 dias" />
