@@ -338,7 +338,7 @@ const PublicPage = () => {
   try {
     setRequestingChanges(true);
 
-    const { error } = await supabase.rpc("public_request_proposal_changes", {
+    const { error } = await supabase.rpc("public_request_proposal_changes" as any, {
       p_token: token,
       p_message: adjustMessage.trim(),
     });
