@@ -106,7 +106,18 @@ const AdminContracts = () => {
     if (editing) {
       await supabase.from("contracts").update(payload).eq("id", editing.id);
     } else {
-      const { data } = await supabase.from("contracts").insert(payload).select().single();
+      const { data, error } = await supabase
+        .from("contracts")
+        .insert(payload)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Erro ao criar contrato:", error);
+        toast.error("Erro ao criar contrato: " + error.message);
+        return;
+      }
+
       if (data) contractId = data.id;
     }
 
