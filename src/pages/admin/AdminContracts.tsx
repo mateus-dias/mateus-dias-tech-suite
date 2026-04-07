@@ -98,6 +98,7 @@ const AdminContracts = () => {
       client_address: form.client_address || null,
       guarantee: form.guarantee || null,
       user_id: user.id,
+      status: 'rascunho', // 🔥 ADICIONAR ISSO
     };
 
     let contractId = editing?.id;
