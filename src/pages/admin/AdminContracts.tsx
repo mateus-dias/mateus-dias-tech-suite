@@ -96,7 +96,6 @@ const AdminContracts = () => {
       client_name: form.client_name || null,
       client_document: form.client_document || null,
       client_address: form.client_address || null,
-      guarantee: form.guarantee || null,
       user_id: user.id,
       status: 'rascunho', // 🔥 ADICIONAR ISSO
     };
