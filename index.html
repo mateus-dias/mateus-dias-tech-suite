@@ -47,24 +47,30 @@
     <meta name="twitter:image" content="/og-image.png" />
 
     <link rel="icon" type="image/svg+xml" href="/app-icon.svg" />
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="manifest" href="/manifest.webmanifest?v=admin-1" />
     <meta name="theme-color" content="#0c1017" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="MD Tech" />
+    <meta name="apple-mobile-web-app-title" content="MD Tech Admin" />
     <link rel="apple-touch-icon" href="/favicon.ico" />
+    <script>
+      // Migrate previously installed home-screen apps to the administrative panel.
+      if (location.pathname === '/' && (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true)) {
+        location.replace('/admin');
+      }
+    </script>
   </head>
 
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   <script>
-if ('serviceWorker' in navigator && location.pathname === '/') {
+if ('serviceWorker' in navigator && (location.pathname === '/' || /^\/admin(?:\/|$)/.test(location.pathname))) {
  window.addEventListener('load', async () => {
   try {
    await navigator.serviceWorker.register('/sw.js');
    const registration = await navigator.serviceWorker.ready;
    const urls = performance.getEntriesByType('resource').map(entry => entry.name);
-   registration.active?.postMessage({type:'CACHE_PUBLIC_ASSETS', urls});
+   if (location.pathname === '/') registration.active?.postMessage({type:'CACHE_PUBLIC_ASSETS', urls});
   } catch (error) { console.warn('Acesso offline indisponível nesta visita.', error); }
  });
 }
