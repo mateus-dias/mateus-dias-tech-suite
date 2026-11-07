@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -5,17 +6,17 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import AdminLogin from "./pages/admin/AdminLogin";
-import AdminLayout from "./components/admin/AdminLayout";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminLeads from "./pages/admin/AdminLeads";
-import AdminProposals from "./pages/admin/AdminProposals";
-import AdminContracts from "./pages/admin/AdminContracts";
-import AdminPayments from "./pages/admin/AdminPayments";
-import AdminProjects from "./pages/admin/AdminProjects";
-import AdminAnalytics from "./pages/admin/AdminAnalytics";
-import AdminSettings from "./pages/admin/AdminSettings";
-import PublicPage from "./pages/public/PublicPage";
+const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
+const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminLeads = lazy(() => import("./pages/admin/AdminLeads"));
+const AdminProposals = lazy(() => import("./pages/admin/AdminProposals"));
+const AdminContracts = lazy(() => import("./pages/admin/AdminContracts"));
+const AdminPayments = lazy(() => import("./pages/admin/AdminPayments"));
+const AdminProjects = lazy(() => import("./pages/admin/AdminProjects"));
+const AdminAnalytics = lazy(() => import("./pages/admin/AdminAnalytics"));
+const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
+const PublicPage = lazy(() => import("./pages/public/PublicPage"));
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <Suspense fallback={<div role="status" style={{padding:32,textAlign:"center"}}>Carregando…</div>}>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/p/:token" element={<PublicPage />} />
@@ -41,6 +43,7 @@ const App = () => (
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </Suspense>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
