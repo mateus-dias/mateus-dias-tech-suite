@@ -2,11 +2,70 @@ import { useState, useEffect } from "react";
 import Contact from "@/components/public/Contact";
 import { useTrackVisit } from "@/hooks/useTrackVisit";
 const projects = [
- {name:"Mendes Industrial",type:"Sistema de gestão",desc:"Clientes, propostas comerciais, financeiro e relatórios em uma operação integrada.",url:"https://mendessystem.netlify.app",initials:"MI",color:"#c2f970"},
- {name:"Leonel Gesso & Elétrica",type:"Site institucional",desc:"Presença digital para apresentar serviços e facilitar o contato com novos clientes.",url:"https://leonelgessoeletrica.com.br",initials:"LE",color:"#ffc58f"},
- {name:"2 Hands Eventos",type:"Sistema para eventos",desc:"Gestão de eventos, bebidas, caixas, consumação e fechamento, com acesso por perfil.",url:"",initials:"2H",color:"#b6b3ff"},
- {name:"Marketplace Gest",type:"Protótipo de sistema",desc:"Projeto de conciliação de marketplaces, organização financeira e visão dos resultados.",url:"https://marketplacegest.netlify.app",initials:"MG",color:"#8edbe5"},
- {name:"MD Flux",type:"Produto próprio • em desenvolvimento",desc:"Gestão para prestadores de serviços: clientes, propostas, agenda e controle financeiro.",url:"",initials:"MD",color:"#f5b6d0"}
+  {
+    "name": "Mendes Industrial",
+    "type": "Site e sistema de gestão",
+    "desc": "Site institucional e gestão de clientes, propostas comerciais, financeiro e relatórios.",
+    "url": "https://mendesindustrial.com.br/",
+    "initials": "MI",
+    "color": "#c2f970"
+  },
+  {
+    "name": "Leonel Gesso & Elétrica",
+    "type": "Site institucional",
+    "desc": "Presença digital para apresentar serviços e facilitar o contato com novos clientes.",
+    "url": "https://leonelgessoeletrica.com.br",
+    "initials": "LE",
+    "color": "#ffc58f"
+  },
+  {
+    "name": "2 Hands Eventos",
+    "type": "Sistema para eventos",
+    "desc": "Gestão de eventos, bebidas, caixas, consumação e fechamento, com acesso por perfil.",
+    "url": "https://handseventos.net.br/",
+    "initials": "2H",
+    "color": "#b6b3ff"
+  },
+  {
+    "name": "MD Flux",
+    "type": "Produto próprio",
+    "desc": "Gestão para prestadores de serviços: clientes, propostas, agenda e controle financeiro.",
+    "url": "https://mdflux.com.br/",
+    "initials": "MD",
+    "color": "#f5b6d0"
+  },
+  {
+    "name": "Sinalizando EPI",
+    "type": "Site institucional",
+    "desc": "Presença digital para apresentar a empresa, seus produtos e canais de contato.",
+    "url": "https://sinalizandoepi.com.br/",
+    "initials": "SE",
+    "color": "#8edbe5"
+  },
+  {
+    "name": "Eletroluz Instalações",
+    "type": "Site institucional",
+    "desc": "Apresentação de serviços de instalações elétricas com acesso direto aos canais de atendimento.",
+    "url": "https://eletroluzinstalacoes.com.br/",
+    "initials": "EL",
+    "color": "#ffe089"
+  },
+  {
+    "name": "Jucélia Fisioterapia",
+    "type": "Site profissional",
+    "desc": "Apresentação profissional na área de fisioterapia, com informações e canais de contato.",
+    "url": "https://juceliafisioterapia.com.br/",
+    "initials": "JF",
+    "color": "#a9ddd0"
+  },
+  {
+    "name": "Flores e Santos Advocacia",
+    "type": "Site profissional",
+    "desc": "Apresentação institucional do escritório de advocacia, com informações e canais de atendimento.",
+    "url": "https://advocaciafloresesantos.com.br/",
+    "initials": "FS",
+    "color": "#d4bb98"
+  }
 ];
 const css = `
 html:has(.md-site),body:has(.md-site){overflow-x:hidden;overflow-x:clip;max-width:100%;overscroll-behavior-x:none;background:#0c1017}
