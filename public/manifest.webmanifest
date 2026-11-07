@@ -1,0 +1,20 @@
+{
+  "id": "/",
+  "name": "Mateus Dias Tech",
+  "short_name": "MD Tech",
+  "description": "Sites e sistemas web por Mateus Dias, Engenheiro da Computação.",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0c1017",
+  "theme_color": "#0c1017",
+  "icons": [
+    {
+      "src": "/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
